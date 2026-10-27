@@ -65,6 +65,11 @@ for col in cat_cols:
 joblib.dump(label_encoders, os.path.join(BASE_DIR, 'label_encoders.pkl'))
 print("[+] Categorical label encoders fitted strictly on TRAIN and saved to label_encoders.pkl")
 
+encoders_map = {col: {label: int(idx) for idx, label in enumerate(le.classes_)} for col, le in label_encoders.items()}
+with open(os.path.join(BASE_DIR, 'encoders_map.json'), 'w') as f_enc:
+    json.dump(encoders_map, f_enc, indent=2)
+print("[+] Categorical label encoder mappings saved to encoders_map.json")
+
 # Binary target label
 for df_split in [train_df, val_df, test_df, shifted_df]:
     df_split['is_attack'] = (df_split['attack_type'] != 'Normal').astype(int)

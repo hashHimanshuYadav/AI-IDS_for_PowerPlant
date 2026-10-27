@@ -1,0 +1,66 @@
+{
+  "region": {
+    "Central": 0,
+    "East": 1,
+    "North": 2,
+    "South": 3,
+    "West": 4
+  },
+  "substation_type": {
+    "Distribution": 0,
+    "Generation": 1,
+    "Renewable": 2,
+    "Transmission": 3
+  },
+  "device_type": {
+    "IED": 0,
+    "PLC": 1,
+    "RTU": 2,
+    "SCADA_Server": 3
+  },
+  "communication_protocol": {
+    "DNP3": 0,
+    "MQTT": 1,
+    "Modbus_TCP": 2
+  },
+  "user_role": {
+    "Admin": 0,
+    "Engineer": 1,
+    "Operator": 2,
+    "Supervisor": 3
+  },
+  "device_trust_level": {
+    "Guest": 0,
+    "Medium": 1,
+    "Trusted": 2
+  },
+  "firmware_version": {
+    "v1.0": 0,
+    "v1.2": 1,
+    "v2.0": 2,
+    "v3.0": 3
+  },
+  "event_severity": {
+    "Critical": 0,
+    "High": 1,
+    "Low": 2,
+    "Medium": 3
+  },
+  "alert_priority": {
+    "P1": 0,
+    "P3": 1,
+    "P4": 2
+  },
+  "encryption_algorithm": {
+    "AES256": 0,
+    "DES": 1,
+    "None": 2,
+    "RSA2048": 3
+  },
+  "certificate_status": {
+    "Expired": 0,
+    "Revoked": 1,
+    "SelfSigned": 2,
+    "Valid": 3
+  }
+}
