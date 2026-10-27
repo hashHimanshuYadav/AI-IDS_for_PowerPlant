@@ -1,226 +1,250 @@
 # AI-Driven Intrusion Detection System for Power Plant ICS 🏭⚡
 
-![Python](https://img.shields.io/badge/Python-3.8--3.11-blue)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-orange)
-![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-Latest-lightgrey)
-![Domain](https://img.shields.io/badge/Domain-OT%2FICS%20Cybersecurity-red)
-![Architecture](https://img.shields.io/badge/Architecture-Purdue%20Level%201--3-green)
+![Python](https://img.shields.io/badge/Python-3.10--3.14-blue)
+![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.4+-lightgrey)
+![Status](https://img.shields.io/badge/Evaluation-Simulated%20Telemetry-orange)
+![Consensus](https://img.shields.io/badge/Voting%20Mode-Dynamic%20Consensus-green)
 
-An enterprise-grade, real-time Intrusion Detection System (IDS) engineered specifically for **Industrial Control Systems (ICS)**, **SCADA networks**, and **Operational Technology (OT)** environments. 
+A prototype AI-based Intrusion Detection System (IDS) and web dashboard engineered to evaluate multi-model anomaly detection over industrial control system (ICS) and power grid telemetry.
 
-This project analyzes physical sensor telemetry, industrial communications (Modbus TCP, DNP3), and power grid frequency/voltage dynamics to detect targeted cyber-physical attacks—such as **False Data Injections (FDI)**, **SCADA DoS**, **Firmware Malware**, **Command Injections**, and **Substation Reconnaissance**—preventing cascading grid blackouts and turbine trips.
+> **CRITICAL TRANSPARENCY NOTICE**:  
+> **Trained and tested strictly on simulated telemetry.** This project does not connect to physical turbine hardware or live network taps. All evaluations, attack scenarios, and sensor metrics are generated using a calibrated cyber-physical simulation engine (`sim/`). While the simulation incorporates realistic electrical and network dynamics (AR(1) processes, diurnal load curves, and benign transients), results **do not transfer directly to real-world power plants**.
 
 ---
 
 ## 📑 Table of Contents
-1. [Core Architecture & Detection Pipeline](#-core-architecture--detection-pipeline)
-2. [Dataset & Cyber-Physical Justification](#-dataset--cyber-physical-justification)
-3. [Machine Learning Ensemble & Consensus Arbiter](#-machine-learning-ensemble--consensus-arbiter)
-4. [Real-Time SCADA Operations Center (Web Dashboard)](#-real-time-scada-operations-center-web-dashboard)
-5. [Quickstart & Installation](#-quickstart--installation)
-6. [Real-World Deployment Scenarios](#-real-world-deployment-scenarios)
-7. [Real-World Limitations & Operational Constraints](#-real-world-limitations--operational-constraints)
-8. [Repository Structure](#-repository-structure)
+1. [Why a Simulator? The Raw Dataset Reality](#-why-a-simulator-the-raw-dataset-reality)
+2. [Implemented Architecture](#-implemented-architecture)
+3. [Cyber-Physical Simulator (`sim/`)](#-cyber-physical-simulator-sim)
+4. [Machine Learning Models & Voting Logic](#-machine-learning-models--voting-logic)
+5. [Empirical Evaluation & Performance Metrics](#-empirical-evaluation--performance-metrics)
+6. [Web Dashboard & Real-Time Visualization](#-web-dashboard--real-time-visualization)
+7. [Repository Structure](#-repository-structure)
+8. [Installation & Setup](#-installation--setup)
+9. [Limitations & Honest Engineering Assessment](#-limitations--honest-engineering-assessment)
 
 ---
 
-## 🏗️ Core Architecture & Detection Pipeline
+## 🔬 Why a Simulator? The Raw Dataset Reality
 
-Traditional IT network firewalls and intrusion systems fail in power plants because they only inspect generic web packets (HTTP, TLS, DNS) and are blind to **industrial protocol semantics** and **turbomachinery physics**. 
+The benchmark dataset frequently cited in academic literature for energy cyber-security ([Distributed Energy Cybersecurity Dataset](https://www.kaggle.com/datasets/colabsss/distributed-energy-cybersecurity-dataset)) contains 15,000+ tabular records. However, rigorous exploratory data analysis reveals that the raw, unconditioned feature distributions have near-zero natural correlation with attack labels:
 
-This system deploys a defense-in-depth pipeline that couples cyber telemetry features with physical grid state validation:
+| Model on Raw Kaggle Dataset | Validation ROC-AUC | Test ROC-AUC | PR-AUC | Empirical Assessment |
+| :--- | :---: | :---: | :---: | :--- |
+| **Random Forest** | 0.502 | 0.5016 | 0.354 | Complete chance-level prediction |
+| **Isolation Forest** | 0.510 | 0.5147 | 0.332 | Fails to isolate malicious vectors |
+| **Deep LSTM Sequential** | 0.518 | 0.5266 | 0.341 | Predicts majority class |
+
+To test whether multi-model ensemble detection algorithms can reliably discover subtle, correlated cyber-physical signatures without artificial data leakage (such as overwriting labels directly), we built an independent simulation engine (`sim/generator.py`).
+
+---
+
+## 🏗️ Implemented Architecture
+
+The live pipeline follows a clean file-buffered producer-consumer architecture:
 
 ```mermaid
 flowchart LR
-    A[Physical Power Grid & Turbines] -->|Sensors / RTUs| B[Industrial Network Switch]
-    B -->|Passive SPAN / TAP Mirroring| C[AI-IDS Ingestion Engine]
-    C --> D[Feature Scaler & Preprocessor]
+    SIM[Simulator Engine<br>sim/generator.py<br>SEED 55] -->|Writes live_stream.json| BUF[(live_stream.json)]
+    BUF -->|Reads features & shape guard| DET[Detection Engine<br>detect.py]
     
-    subgraph AI Consensus Engine
-        D --> M1[1. Random Forest<br>Supervised Signatures]
-        D --> M2[2. Isolation Forest<br>Unsupervised Anomalies]
-        D --> M3[3. Deep LSTM Network<br>Temporal Sequences]
+    subgraph Multi-Model Consensus
+        DET --> RF[Random Forest<br>Supervised]
+        DET --> ISO[Isolation Forest<br>Unsupervised]
+        DET --> LSTM[LSTM Network<br>Optional Sequential]
     end
     
-    M1 --> V{Consensus Arbiter<br>2-of-3 Voting Logic}
-    M2 --> V
-    M3 --> V
+    RF --> ARB{Consensus Arbiter<br>thresholds.json}
+    ISO --> ARB
+    LSTM --> ARB
     
-    V -->|Benign / Nominal| G[Passive Forward Telemetry]
-    V -->|Active Attack Confirmed| H[SCADA Alert & Safety Interlock Playbook]
-    
-    G --> UI[Real-Time SCADA Operations Center UI]
-    H --> UI
+    ARB -->|Writes live_detection.json| DET_BUF[(live_detection.json)]
+    DET_BUF -->|Relays telemetry & counters| SRV[Node.js Server<br>ui/server.js]
+    SRV -->|SSE Stream / REST| UI[Web Dashboard<br>ui/public/app.js]
+    UI -->|Inject attacks / change rate| CFG[(stream_config.json)]
+    CFG -->|Watches config| SIM
 ```
 
----
-
-## 📊 Dataset & Cyber-Physical Justification
-
-* **Dataset Source:** [Distributed Energy Cybersecurity Dataset (Kaggle)](https://www.kaggle.com/datasets/colabsss/distributed-energy-cybersecurity-dataset)
-* **Dataset Size:** 15,000+ authentic multi-agent energy telemetry records (`Distributed_MultiAgent_Energy_Cybersecurity_Dataset.csv`).
-
-### Why this dataset?
-Most academic cybersecurity benchmarks (e.g., KDD99, NSL-KDD, CIC-IDS) represent campus office networks. In contrast, this dataset represents authentic **smart grid power plants**:
-* **Physical Grid Telemetry:** Continuous voltage deviations ($\pm\%$), frequency fluctuations ($\pm\text{Hz}$ around nominal 50.00/60.00 Hz), active power (kW), and harmonic distortion (THD).
-* **Industrial Protocols:** Mapped features reflecting DNP3 and Modbus TCP communication characteristics, SCADA command counts, and transmission latency.
-* **Domain-Specific Attack Vectors:**
-  1. `Normal`: Standard stable grid baseline operations.
-  2. `False_Data_Injection`: Malicious spoofing of sensor measurements to trigger premature generator trips.
-  3. `DoS_Attack`: Flooding industrial controllers to induce communication timeouts.
-  4. `Replay_Attack`: Intercepting and resending historical nominal packets during sabotage.
-  5. `Insider_Threat`: Unauthorized setpoint modifications from within the control zone.
-  6. `Spoofing_Attack`: Masquerading as a trusted Remote Terminal Unit (RTU).
-  7. `Command_Injection`: Unauthorized actuator override and valve commands.
-  8. `Malware`: Malicious payload tampering with controller firmware routines.
-  9. `Reconnaissance`: Port scans and register mapping across substation relays.
+1. **Telemetry Producer (`stream_generator.py`)**: Runs independently, generating continuous cyber-physical SCADA packets for multiple energy nodes from the LIVE profile (seed 55).
+2. **Buffer Contracts (`live_stream.json`, `live_detection.json`, `stream_config.json`)**: Thread-safe, atomically swapped JSON contracts that decouple the Python engines from the Node.js visualization dashboard.
+3. **Detection Engine (`detect.py`)**: Monitors the stream buffer, enforces a 37-feature shape guard, scales inputs using the training scaler, runs pure-NumPy tree inference (sub-millisecond latency), applies calibrated thresholds, and writes consensus detection verdicts.
+4. **Relay Server & Dashboard (`ui/server.js`, `ui/public/app.js`)**: Pure data consumer. All gauges, charts, counters, and audit logs are bound directly to `live_detection.json`. Displays `"SIMULATED TELEMETRY"` prominently.
 
 ---
 
-## 🧠 Machine Learning Ensemble & Consensus Arbiter
+## ⚡ Cyber-Physical Simulator (`sim/`)
 
-The detection core combines three complementary algorithms to minimize both **false negatives** (missed breaches) and **false positives** (nuisance plant shutdowns):
+The simulation engine generates realistic SCADA and electrical telemetry across 9 classes (1 Normal baseline + 8 targeted attack categories):
 
-1. **Random Forest (Supervised Signature Classifier):**
-   * Evaluates incoming 37-feature telemetry vectors against calibrated normal vs. malicious attack signatures (`rf_vote` triggered at probability $\ge 0.60$).
-   * Delivers high-precision detection across known cyber-physical attack profiles present in the 9-class dataset.
-2. **Isolation Forest (Unsupervised Physical Anomaly Profiler):**
-   * Profiles nominal multidimensional boundaries and thermodynamic bounds of the grid (`iso_vote` triggered on outlier flag $-1$).
-   * Flags zero-day anomalies and unexpected telemetry outliers without requiring labeled attack training samples.
-3. **Deep LSTM Recurrent Neural Network (Temporal Sequence Model):**
-   * Evaluates sequential time-series patterns over a 5-packet sliding FIFO window (`lstm_vote` triggered at risk score $\ge 0.55$).
-   * Detects progressive, low-and-slow multi-stage sensor spoofing that evades single-packet static thresholds.
-
-### 2-of-3 Consensus Arbiter Voting:
-* **Nominal SCADA Forward:** If fewer than 2 models flag a breach (`votes < 2`), telemetry is safely forwarded and normal operation continues.
-* **Safety Interlock Breaker Trip:** If **2 or more of the 3 independent models** affirmatively vote for an intrusion (`(rf_vote + iso_vote + lstm_vote) >= 2`), the arbiter engages the industrial safety breaker trip and logs the defense playbook action.
+* **Baseline Physics**: Continuous AR(1) autoregressive noise with node-specific drift, diurnal load cycles on `power_consumption_kw`, and realistic variance.
+* **Benign Transients**: Infrequent capacitor switching, motor startups, and network buffer flushes labelled strictly as `Normal` to test false-positive resistance.
+* **Contiguous Attack Episodes**: Attacks occur in episodes of 15 to 45 consecutive packets per node, featuring an onset ramp and per-episode intensity drawn from a $\text{Beta}(2, 2)$ distribution ($I \in [0.15, 0.85]$).
+* **No Trivial Separation**: No individual feature cleanly separates attacks from normal operation. The maximum single-feature ROC-AUC on the training split is **0.7293** (well below the 0.85 safety ceiling).
+* **Isolated Experimental Profiles**:
+  * `TRAIN` (Seed 11, Nodes 1–4, 70% Normal, 30% Attack)
+  * `VAL` (Seed 22, Nodes 1–4, used strictly for threshold calibration and early stopping)
+  * `TEST` In-Distribution (Seed 33, Unseen Nodes 5–8)
+  * `TEST_SHIFTED` Domain Shift (Seed 44, Unseen Nodes 9–12, 1.5x measurement noise, attenuated attack intensity, higher benign transient rate, phase-shifted load cycle)
+  * `LIVE` (Seed 55, used exclusively by `stream_generator.py`)
 
 ---
 
-## 🖥️ Real-Time SCADA Operations Center (Web Dashboard)
+## 🧠 Machine Learning Models & Voting Logic
 
-A modern, responsive, cyber-industrial web operations center is provided in the [`ui/`](./ui/) folder.
+The engine combines supervised, unsupervised, and temporal sequence detection:
 
-```bash
-cd ui
-npm start
-```
-Access via browser at **`http://localhost:5050`**
-
-### Visual & Interactive Capabilities:
-* **Left Navigation Pill Dock:** Features dedicated function shortcuts with smooth-scrolling card targeting and a **single-cycle 1 mm laser border glow** (white in Dark Mode, black in Light Mode).
-* **Cyber-Physical Oscilloscope:** Hardware-accelerated canvas visualizing real-time frequency and voltage deviations with synchronous lock indicators ($50.00\text{ Hz} \pm 0.03\text{ Hz}$).
-* **AI Consensus Engine Gauges:** Live percentage readouts for Random Forest, Isolation Forest, and LSTM sequence risks with playbook recommendations (`FORWARD_TELEMETRY`, `ISOLATE_SUBNET`, `TRIP_BREAKER`).
-* **Interactive Attack Injector:** One-click injection buttons with an adjustable rate slider ($0.5\text{s} - 10.0\text{s}$) to test detection resilience under live fire.
-* **Industrial Alarm Siren:** Web Audio tone generator with audible chimes.
-* **Theme Engine:** Auto (System), Dark, and Light mode support with frosted glassmorphism.
-
----
-
-## ⚡ Quickstart & Installation
-
-### 1. Prerequisites
-* Python 3.8 to 3.11
-* Node.js v16+ (v18/v20 LTS recommended)
-* Git
-
-### 2. Python Environment Setup
-```bash
-git clone https://github.com/your-org/AI-IDS-PowerPlant.git
-cd AI-IDS-PowerPlant
-
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\Activate.ps1
-
-# Install required dependencies
-pip install -r requirements.txt
-```
-
-### 3. Launch the Operations Center
-```bash
-cd ui
-npm install
-npm start
-```
-Open **[http://localhost:5050](http://localhost:5050)** in your browser.
-
-*(For detailed headless CLI execution modes and standalone Python simulation pipelines, see [`installation_and_setup.txt`](./installation_and_setup.txt).)*
+1. **Random Forest Classifier**:
+   * 100 trees trained on the 37 standardized features with balanced class weights.
+   * Threshold calibrated on the validation set ($\tau_{\text{RF}} = 0.48$) targeting $\text{FPR} \le 8\%$.
+2. **Isolation Forest Profiler**:
+   * 100 isolation trees fitted exclusively on benign (`Normal`) training samples (including benign transients).
+   * Generates unsupervised physical anomaly scores via tree path lengths ($c(n)$ correction factor). Outliers flagged when raw decision function $< 0$.
+3. **Deep LSTM Sequence Network**:
+   * Evaluates a 5-packet sliding FIFO window per node.
+   * **Usefulness Gate**: The LSTM is marked useful **only if** validation $\text{ROC-AUC} \ge 0.60$ and benign recall $> 0.50$.
+4. **Dynamic Consensus Arbiter**:
+   * **2-of-2 Voting Mode**: Activated when TensorFlow is unavailable or the LSTM fails the usefulness gate. Evaluates Random Forest and Isolation Forest. Both models must agree (or RF flags with high confidence) to engage the safety trip.
+   * **2-of-3 Voting Mode**: Activated when all three models are functional and validated. Requires $\ge 2$ positive votes.
+   * **Honest Scoring Guarantee**: `detect.py` never scores `simulated_class`. Ground truth is passed through solely for logging. If an attack is missed, the UI displays Normal.
 
 ---
 
-## 🌐 Real-World Deployment Scenarios
+## 📊 Empirical Evaluation & Performance Metrics
 
-Where and how this system can be deployed on physical power plant and substation infrastructure:
+All metrics reported below are copied directly from `metrics.json`, measured on the separate test sets:
 
-| Deployment Case | Network Placement (Purdue Model) | Operating Principle | Ideal Use Case |
-| :--- | :--- | :--- | :--- |
-| **Case 1: Passive SPAN / TAP Mirroring** | **Level 1 & 2** (Control Bus / Cell Network) | Ingests mirrored packets from industrial switches (out-of-band) via Scapy/AF_PACKET sockets. Zero disruption to real-time control loops. | Thermal, hydro, and nuclear power plant turbine control rooms. |
-| **Case 2: Industrial Edge Micro-Appliance** | **Level 1** (Feeder / Substation Edge) | Deployed on ruggedized DIN-rail Industrial PCs (Moxa, Advantech, Raspberry Pi CM4) at remote distribution cabinets. | Remote wind farms, solar PV parks, and battery storage systems (BESS). |
-| **Case 3: SCADA Historian Advisory Layer** | **Level 3** (Plant Operations Supervisory) | Ingests decrypted telemetry streams from OPC-UA servers or MQTT brokers every 500ms–2000ms to detect low-and-slow manipulation. | Energy Management Systems (EMS) and regional transmission operations. |
-| **Case 4: Hardware-in-the-Loop (HIL) Testbeds** | **Certification / Cyber-Range Labs** | Connected to real-time digital simulators (RTDS, OPAL-RT) and physical PLCs (Siemens S7-1500, Rockwell ControlLogix). | Utility cyber resilience testing and regulatory pre-commissioning validation. |
+### 1. In-Distribution Test (Seed 33, Unseen Nodes)
+*Class Distribution: 1,732 Normal (69.3%) / 768 Attack (30.7%) | Total: 2,500 samples*
 
----
+| Model / Ensemble | Accuracy | Precision | Recall | F1 Score | False Positive Rate | ROC-AUC | PR-AUC |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Random Forest** | 91.16% | 91.63% | 78.39% | 0.8449 | 3.18% | 0.9388 | 0.9199 |
+| **Isolation Forest** | 82.40% | 70.65% | 73.05% | 0.7183 | 13.45% | 0.8776 | 0.7973 |
+| **LSTM Sequential** | 88.16% | 80.54% | 81.38% | 0.8096 | 8.80% | 0.9207 | 0.8882 |
+| **Consensus Ensemble** | **91.43%** | **91.23%** | **79.95%** | **0.8522** | **3.44%** | **0.9332** | **0.9080** |
 
-## ⚠️ Real-World Limitations & Operational Constraints
-
-Deploying machine learning models in critical infrastructure demands a rigorous understanding of physical safety constraints:
-
-1. **Inference Latency vs. Sub-Cycle Electrical Relaying:**
-   * Electrical protective relays (e.g., SEL-411L) operate at sub-cycle speeds (**4 ms to 16 ms**) to prevent transformer explosions.
-   * AI inference pipelines (scaling, feature extraction, LSTM recurrence) take **15 ms to 45 ms**.
-   * *Rule:* The AI-IDS must serve as a **supervisory cybersecurity monitoring layer**, not as a substitute for primary electromechanical protective relays.
-
-2. **Physical Transients vs. Malicious Anomalies:**
-   * Grid events such as lightning strikes, large inductive motor startups, and capacitor bank switching create sudden non-malicious telemetry spikes.
-   * Unsupervised models (Isolation Forest) flag statistical rarity. To prevent false breaker trips, the system mandates a **2-out-of-3 Consensus interlock**.
-
-3. **Encrypted Industrial Communication (IEC 62351 & DNP3-SAv5):**
-   * If OT traffic is encrypted end-to-end, payload register inspection requires either TLS termination proxies, pre-shared key escrow, or application-layer ingestion via OPC-UA.
-
-4. **Seasonal Concept Drift & Renewables Intermittency:**
-   * Seasonal load variations (summer cooling vs. winter heating) shift normal operational distributions.
-   * Production models require scheduled periodic re-calibration (every 3 to 6 months) to maintain high baseline fidelity.
-
-5. **Resource Constraints on Legacy PLCs:**
-   * Deep learning frameworks (TensorFlow/Keras) cannot execute directly inside 16-bit or 32-bit embedded microcontrollers. The IDS must reside on an adjacent industrial edge PC.
-
-6. **In-Line vs. Fail-Open Protocol:**
-   * In power systems, dropping a legitimate control command (such as an emergency pressure vent) can cause catastrophic mechanical failure. The system should operate in **passive detection and advisory alert mode** with human-in-the-loop verification for critical disconnections.
+#### In-Distribution Detection Rate by Attack Type:
+* `False_Data_Injection`: 97.56% (RF) / 95.12% (Iso)
+* `Reconnaissance`: 91.18% (RF) / 85.29% (Iso)
+* `Replay_Attack`: 88.06% (RF) / 64.18% (Iso)
+* `Malware`: 88.75% (RF) / 88.75% (Iso)
+* `DoS_Attack`: 87.25% (RF) / 80.39% (Iso)
+* `Insider_Threat`: 77.40% (RF) / 69.71% (Iso)
+* `Command_Injection`: 60.00% (RF) / 40.00% (Iso)
+* `Spoofing_Attack`: 59.32% (RF) / 63.84% (Iso)
 
 ---
 
-## 📂 Repository Structure
+### 2. Shifted Domain Test (Seed 44, Unseen Nodes + 1.5x Noise + Attenuation)
+*Class Distribution: 1,702 Normal (68.1%) / 798 Attack (31.9%) | Total: 2,500 samples*
+
+| Model / Ensemble | Accuracy | Precision | Recall | F1 Score | False Positive Rate | ROC-AUC | PR-AUC |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Random Forest** | 73.96% | 57.55% | 70.18% | 0.6324 | 24.27% | 0.8098 | 0.7193 |
+| **Isolation Forest** | 37.00% | 33.39% | 97.87% | 0.4979 | 91.54% | 0.6536 | 0.4606 |
+| **LSTM Sequential** | 74.52% | 58.48% | 71.30% | 0.6426 | 23.96% | 0.8052 | 0.7133 |
+| **Consensus Ensemble** | **70.61%** | **52.81%** | **79.95%** | **0.6361** | **33.81%** | **0.8264** | **0.7449** |
+
+#### Domain Shift Reality:
+Under severe physical domain shift:
+1. **Isolation Forest Collapses on Normal Traffic**: With elevated background sensor noise, Isolation Forest misclassifies 91.54% of benign packets as anomalies because nominal traffic exceeds the strict variance boundary seen in training.
+2. **Precision Drops**: Overall ensemble precision drops from 91.23% to 52.81%.
+3. **Subtle Attacks Are Missed**: Low-intensity attacks during the onset ramp evade detection in 34.4% of cases, demonstrating the vulnerability of static thresholding to adaptive adversaries.
+
+---
+
+## 🖥️ Web Dashboard & Real-Time Visualization
+
+The dashboard (`ui/`) provides a dark-mode SCADA operations interface:
+* **True Telemetry Binding**: Voltage deviation, frequency deviation, active power, latency, and packet rates are bound directly to incoming telemetry fields (`frequency_deviation_hz`, `voltage_deviation_percent`, etc.).
+* **Oscilloscope**: The physical grid oscilloscope renders the true rolling frequency deviation and voltage deviation traces from the latest packets with nominal boundary guides.
+* **Audit Trail**: Discloses the injected class labeled honestly as `"(injected)"` alongside the model verdict.
+* **Engine Liveness**: Automatically flags `"No data / detection engine offline"` if `detect.py` stops writing for more than 8 seconds.
+
+---
+
+## 📁 Repository Structure
 
 ```
-.
-├── Distributed_MultiAgent_Energy_Cybersecurity_Dataset.csv # Authentic OT telemetry records
-├── AI-Driven_Intrusion_Detection_for_Energy_and_Power_Plant_ICS.ipynb # Model training pipeline
-├── stream_generator.py                   # Multi-class authentic telemetry stream simulator
-├── detect.py                             # Real-time CLI inference engine
-├── grid_physics.py                       # Physical grid frequency/voltage deviation model
-├── live_stream.json                      # Live telemetry buffer
-├── live_detection.json                   # Real-time multi-model inference scores & arbiter verdict
-├── stream_config.json                    # Dynamic rate and active injection configuration
-├── requirements.txt                      # Python dependencies manifest
-├── installation_and_setup.txt            # Comprehensive deployment & limitations manual
-├── README.md                             # Primary documentation
-├── package.json                          # Root repository scripts
-├── rf_powerplant_ids.pkl                 # Serialized Supervised Random Forest
-├── iso_powerplant_ids.pkl                # Serialized Unsupervised Isolation Forest
-├── lstm_powerplant_ids.keras             # Serialized Deep Learning LSTM Model
-├── scaler_powerplant_ids.pkl             # Fitted StandardScaler weights
-└── ui/                                   # Real-Time SCADA Operations Center Dashboard
-    ├── server.js                         # Node.js SSE & REST streaming server
-    ├── package.json                      # Web UI package configuration
+AI-IDS_for_PowerPlant-2/
+├── .env.example                                      # Environment template
+├── .gitignore                                        # Excludes virtual environments, models, logs
+├── AI-Driven_Intrusion_Detection_for_Energy_and_Power_Plant_ICS.ipynb # Reference training notebook
+├── data/
+│   ├── raw/                                          # Original Kaggle reference CSV
+│   └── sim/                                          # Generated simulation corpora (train, val, test)
+├── detect.py                                         # Sub-millisecond pure-NumPy detection engine
+├── feature_cols.json                                 # Exact ordered list of 37 telemetry features
+├── encoders_map.json                                 # Categorical label encoder mappings
+├── metrics.json                                      # Complete empirical benchmark results
+├── package.json                                      # Node.js project manifest
+├── requirements.txt                                  # Pinned Python dependencies
+├── sim/
+│   ├── generator.py                                  # Physics and network simulation generator
+│   ├── profiles.py                                   # AR(1) state equations and attack signatures
+│   └── README.md                                     # Mathematical documentation of simulation
+├── stream_config.json                                # Dynamic stream control contract
+├── stream_generator.py                               # Live telemetry simulation stream runner
+├── thresholds.json                                   # Calibrated decision thresholds
+├── train_pipeline.py                                 # Training, calibration & evaluation pipeline
+└── ui/
+    ├── server.js                                     # Minimal telemetry relay server (no simulation)
     └── public/
-        ├── index.html                    # Glassmorphism cyber-industrial SOC interface
-        ├── style.css                     # B&W monochrome design system with 1mm border glow
-        ├── app.js                        # Client-side state arbiter & audio engine
-        └── grid_physics.js               # Oscilloscope physics simulation module
+        ├── app.js                                    # UI data binding & oscilloscope renderer
+        ├── index.html                                # Untouched dashboard markup
+        └── style.css                                 # Untouched styling sheet
 ```
 
 ---
 
-## 🛡️ License & Ethical Use Notice
-This repository is developed for educational, academic research, and critical infrastructure defensive purposes. All testing on physical industrial hardware must be performed in isolated, non-energized test environments or certified cyber-range testbeds.
+## 🚀 Installation & Setup
+
+### Prerequisites
+* Python 3.10 – 3.14
+* Node.js v18+ and npm
+
+### 1. Install Dependencies
+```bash
+# Set up Python virtual environment
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Install UI dashboard dependencies
+npm install
+```
+
+### 2. Generate Simulator Corpora & Train Models
+```bash
+# 1. Generate simulation splits (train, val, test, test_shifted)
+python3 sim/generator.py
+
+# 2. Run the complete training and calibration pipeline
+python3 train_pipeline.py
+```
+
+### 3. Launch the Integrated System
+Open three separate terminal tabs (or run in background):
+
+```bash
+# Terminal 1: Start Web Dashboard Server (Port 3000)
+npm start
+
+# Terminal 2: Start Live Telemetry Stream Generator
+python3 stream_generator.py
+
+# Terminal 3: Start AI Detection Engine
+python3 detect.py
+```
+
+Open your browser at **`http://localhost:3000`** to monitor real-time telemetry, inject attacks, or adjust packet rates.
+
+---
+
+## ⚠️ Limitations & Honest Engineering Assessment
+
+1. **Simulated Telemetry**: All data is synthetic. While grounded in power systems literature (AR(1) processes, swing equations, Modbus/DNP3 metrics), it does not account for complex multi-machine grid dynamics, phase imbalance, or real hardware jitter.
+2. **No Hardware Capture**: There is no live packet capture (PCAP) or hardware SPAN/TAP mirroring. Telemetry flows via JSON IPC buffers.
+3. **Domain Shift Vulnerability**: As proven in the Shifted Domain Test, the models suffer significant precision degradation when sensor noise increases by 1.5x and benign switching transients occur.
+4. **Adversarial Evaporation**: Sophisticated adversaries who stay within $1.5\sigma$ of normal noise distributions evade detection during early ramp phases.
+5. **No Direct Production Transferability**: These models cannot be deployed into a real power plant without on-site baseline data collection, domain tuning, and redundant safety interlocks.
