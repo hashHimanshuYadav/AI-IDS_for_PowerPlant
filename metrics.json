@@ -1,0 +1,77 @@
+{
+  "evaluation_dataset": "Held-out test_stream.csv (chronological split, no leakage)",
+  "test_sample_count": 2264,
+  "normal_samples": 253,
+  "attack_samples": 2011,
+  "random_forest": {
+    "accuracy": 0.242,
+    "precision": 0.8892,
+    "recall": 0.1676,
+    "f1_score": 0.282,
+    "roc_auc": 0.5016,
+    "pr_auc": 0.8899,
+    "calibrated_threshold": 0.73
+  },
+  "isolation_forest": {
+    "accuracy": 0.2208,
+    "precision": 0.8896,
+    "recall": 0.1402,
+    "f1_score": 0.2423,
+    "roc_auc": 0.5147,
+    "pr_auc": 0.892
+  },
+  "lstm_sequential": {
+    "roc_auc": 0.5266,
+    "normal_recall": 0.3648,
+    "is_useful": false,
+    "status": "unavailable"
+  },
+  "detection_rates_per_attack_type": {
+    "Replay_Attack": {
+      "samples": 244,
+      "rf_detection_rate": 0.1885,
+      "iso_detection_rate": 0.1393
+    },
+    "DoS_Attack": {
+      "samples": 231,
+      "rf_detection_rate": 0.1775,
+      "iso_detection_rate": 0.1169
+    },
+    "Reconnaissance": {
+      "samples": 230,
+      "rf_detection_rate": 0.1783,
+      "iso_detection_rate": 0.1391
+    },
+    "Insider_Threat": {
+      "samples": 250,
+      "rf_detection_rate": 0.172,
+      "iso_detection_rate": 0.116
+    },
+    "Spoofing_Attack": {
+      "samples": 272,
+      "rf_detection_rate": 0.1544,
+      "iso_detection_rate": 0.1213
+    },
+    "Normal": {
+      "samples": 253,
+      "rf_detection_rate": 0.166,
+      "iso_detection_rate": 0.1383
+    },
+    "False_Data_Injection": {
+      "samples": 266,
+      "rf_detection_rate": 0.1128,
+      "iso_detection_rate": 0.1429
+    },
+    "Command_Injection": {
+      "samples": 270,
+      "rf_detection_rate": 0.1926,
+      "iso_detection_rate": 0.1889
+    },
+    "Malware": {
+      "samples": 248,
+      "rf_detection_rate": 0.1694,
+      "iso_detection_rate": 0.1532
+    }
+  },
+  "quality_assessment": "POOR - The unconditioned raw Kaggle dataset features exhibit near-zero correlation with attack labels (ROC-AUC ~0.50). Without synthetic label leakage, ML models cannot achieve meaningful discrimination on raw random noise."
+}

@@ -1,0 +1,19 @@
+{
+  "name": "ai-ids-powerplant-ui",
+  "version": "1.0.0",
+  "description": "Real-time SCADA / ICS Security Operations Center UI for Power Plant AI-IDS",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "scada",
+    "ids",
+    "power-plant",
+    "ot-cybersecurity",
+    "intrusion-detection"
+  ],
+  "author": "AI-IDS PowerPlant",
+  "license": "ISC"
+}

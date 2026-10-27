@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-IDS Power Plant Operations Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <div class="app-viewport">
+
+    <!-- Left Floating Navigation Pill Dock (Inspired by design) -->
+    <aside class="floating-dock" aria-label="Navigation Dock">
+      <div class="dock-brand" title="Power Plant Unit-4 SCADA">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+      </div>
+      <nav class="dock-items">
+        <button class="dock-btn active" data-section="overview" title="Operations Overview">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+        </button>
+        <button class="dock-btn" data-section="oscilloscope" title="Waveform Sensors">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </button>
+        <button class="dock-btn" data-section="ai" title="AI Consensus Decision Deck">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a4 4 0 0 1 4 4c0 1.9-1.3 3.5-3 3.9V13h3a3 3 0 0 1 3 3v2a2 2 0 0 1-2 2h-1"></path>
+            <path d="M12 2a4 4 0 0 0-4 4c0 1.9 1.3 3.5 3 3.9V13H8a3 3 0 0 0-3 3v2a2 2 0 0 0 2 2h1"></path>
+          </svg>
+        </button>
+        <button class="dock-btn" data-section="injector" title="Targeted Attack Injector">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </button>
+        <button class="dock-btn" data-section="logs" title="Security Audit Logs">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+        </button>
+      </nav>
+      <div class="dock-bottom">
+        <button class="dock-btn" id="dock-status-dot" title="Operational Heartbeat">
+          <span class="live-dot-pulse"></span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Dashboard Window -->
+    <main class="glass-window">
+
+      <!-- Top Navigation & Control Bar -->
+      <header class="window-header">
+
+        <!-- Search & Filter Bar -->
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="telemetry-search"
+            placeholder="Search node, protocol (DNP3, Modbus), or telemetry class..." aria-label="Search telemetry">
+        </div>
+
+        <!-- Right Header Actions -->
+        <div class="header-actions">
+
+          <!-- Alarm Siren Toggle Pill -->
+          <button id="audio-toggle-btn" class="glass-pill-btn audio-btn" title="Toggle Industrial Alarm Audio">
+            <svg class="pill-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <span>Alarm: <strong id="audio-state-text">Off</strong></span>
+          </button>
+
+          <!-- Stream Pause / Resume Pill -->
+          <button id="toggle-stream-btn" class="glass-pill-btn" title="Pause or Resume Stream">
+            <svg class="pill-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6" y="4" width="4" height="16"></rect>
+              <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+            <span id="stream-btn-text">Pause</span>
+          </button>
+
+          <!-- Theme Toggle Pill: System / Light / Dark -->
+          <div class="glass-pill-select theme-switcher" title="Switch Theme (System / Light / Dark)">
+            <svg id="theme-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <select id="theme-select" aria-label="Select color theme">
+              <option value="system" selected>Auto (System)</option>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+
+          <!-- Operator / Node Badge -->
+          <div class="operator-badge">
+            <div class="operator-avatar">
+              <span>U4</span>
+            </div>
+            <div class="operator-info">
+              <span class="operator-name">Unit-4 Turbine</span>
+              <span class="operator-role mono" id="clock-display">00:00:00 UTC</span>
+            </div>
+          </div>
+
+        </div>
+      </header>
+
+      <!-- Threat Alert & Consensus Interlock Strip -->
+      <section class="alert-strip normal-state" id="threat-banner">
+        <div class="strip-left">
+          <div class="status-pulse-badge" id="strip-status-badge">
+            <span class="pulse-ring"></span>
+            <span class="pulse-core"></span>
+          </div>
+          <div>
+            <div class="strip-title" id="banner-heading">Grid Telemetry Secure &bull; Normal Operation</div>
+            <div class="strip-sub" id="banner-sub">Physical telemetry and industrial communication verified nominal.
+            </div>
+          </div>
+        </div>
+        <div class="strip-right">
+          <div class="playbook-pill mono" id="banner-action-tag">ACTION: FORWARD_TELEMETRY</div>
+        </div>
+      </section>
+
+      <!-- Dashboard Body Grid -->
+      <div class="window-content">
+
+        <!-- Top Main Row: General Stats & Cyber-Physical Oscilloscope -->
+        <section class="content-row">
+
+          <!-- Primary Telemetry & Waveform Card -->
+          <div class="glass-card main-stats-card">
+
+            <div class="card-top-bar">
+              <div class="card-title-group">
+                <span class="card-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                  </svg>
+                </span>
+                <div>
+                  <h3>Cyber-Physical Oscilloscope</h3>
+                  <span class="card-subtitle">Real-time frequency (&plusmn;Hz) &amp; voltage (&plusmn;%)
+                    deviations</span>
+                </div>
+              </div>
+
+              <!-- Stream State Indicators & Legend -->
+              <div class="card-actions-group">
+                <div class="stream-pill" id="stream-status">
+                  <span class="status-dot"></span> Live Stream (1.5s)
+                </div>
+                <div class="legend-group">
+                  <span class="legend-item"><span class="dot freq-dot"></span> Freq Dev</span>
+                  <span class="legend-item"><span class="dot volt-dot"></span> Volt Dev</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Oscilloscope Canvas & Digital Overlays -->
+            <div class="canvas-glass-wrapper">
+              <div class="canvas-hud-header">
+                <div class="hud-status-group">
+                  <span id="osc-status-indicator" class="hud-status-dot nominal"></span>
+                  <span id="osc-status-text" class="hud-status-text mono">GRID SYNCHRONOUS LOCKED: 50.00 Hz [NOMINAL] • THD: 0.65%</span>
+                </div>
+                <div class="canvas-readouts">
+                  <div class="readout-tile">
+                    <span class="readout-label">FREQ DEVIATION</span>
+                    <span class="readout-val mono" id="stat-freq-val">+0.000 Hz</span>
+                  </div>
+                  <div class="readout-tile">
+                    <span class="readout-label">VOLT DEVIATION</span>
+                    <span class="readout-val mono" id="stat-volt-val">+0.00 %</span>
+                  </div>
+                  <div class="readout-tile">
+                    <span class="readout-label">ACTIVE POWER</span>
+                    <span class="readout-val mono" id="stat-power-val">0.0 kW</span>
+                  </div>
+                </div>
+              </div>
+              <canvas id="telemetry-canvas" width="850" height="190"></canvas>
+            </div>
+
+            <!-- Mini Telemetry Telemetry Matrix -->
+            <div class="telemetry-metrics-bar">
+              <div class="mini-metric">
+                <span class="lbl">LATENCY</span>
+                <span class="val mono" id="m-latency">0.0 ms</span>
+                <div class="bar-track">
+                  <div id="m-latency-bar" class="bar-fill" style="width: 15%"></div>
+                </div>
+              </div>
+              <div class="mini-metric">
+                <span class="lbl">PACKET RATE</span>
+                <span class="val mono" id="m-packet-rate">0 pkts/s</span>
+                <div class="bar-track">
+                  <div id="m-rate-bar" class="bar-fill" style="width: 25%"></div>
+                </div>
+              </div>
+              <div class="mini-metric">
+                <span class="lbl">SCADA COMMANDS</span>
+                <span class="val mono" id="m-scada-cmds">0 cmds</span>
+                <div class="bar-track">
+                  <div id="m-scada-bar" class="bar-fill" style="width: 30%"></div>
+                </div>
+              </div>
+              <div class="mini-metric">
+                <span class="lbl">TRAFFIC ENTROPY</span>
+                <span class="val mono" id="m-entropy">0.00</span>
+                <div class="bar-track">
+                  <div id="m-entropy-bar" class="bar-fill" style="width: 45%"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right AI Decision Matrix Column (Inspired by right side donut cards) -->
+          <div class="glass-card ai-summary-card">
+            <div class="card-top-bar">
+              <div class="card-title-group">
+                <span class="card-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                    <path d="M2 12h20"></path>
+                  </svg>
+                </span>
+                <div>
+                  <h3>AI Consensus Engine</h3>
+                  <span class="card-subtitle">3-Layer Defense-in-Depth</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="ai-models-list">
+
+              <!-- Model 1: Random Forest -->
+              <div class="model-row" id="card-rf">
+                <div class="model-row-left">
+                  <span class="model-tag">Supervised</span>
+                  <span class="model-title">Random Forest</span>
+                </div>
+                <div class="model-row-right">
+                  <span class="score-pill mono" id="rf-score-val">0.0%</span>
+                  <span class="status-badge" id="rf-status">Normal</span>
+                </div>
+              </div>
+
+              <!-- Model 2: Isolation Forest -->
+              <div class="model-row" id="card-iso">
+                <div class="model-row-left">
+                  <span class="model-tag">Unsupervised</span>
+                  <span class="model-title">Isolation Forest</span>
+                </div>
+                <div class="model-row-right">
+                  <span class="score-pill mono" id="iso-score-val">Normal</span>
+                  <span class="status-badge" id="iso-status">Nominal</span>
+                </div>
+              </div>
+
+              <!-- Model 3: Deep LSTM -->
+              <div class="model-row" id="card-lstm">
+                <div class="model-row-left">
+                  <span class="model-tag">Deep Learning</span>
+                  <span class="model-title">LSTM Network</span>
+                </div>
+                <div class="model-row-right">
+                  <span class="score-pill mono" id="lstm-score-val">0.0%</span>
+                  <span class="status-badge" id="lstm-status">Low Risk</span>
+                </div>
+              </div>
+
+              <!-- Consensus Interlock Summary -->
+              <div class="consensus-row" id="card-consensus">
+                <div class="consensus-header">
+                  <span class="consensus-lbl">CONSENSUS VERDICT</span>
+                  <span class="consensus-val mono" id="consensus-verdict">Secure</span>
+                </div>
+                <div class="playbook-snippet mono" id="playbook-code">Action: Forward</div>
+              </div>
+
+            </div>
+
+            <!-- Cumulative Interception Counter -->
+            <div class="stats-counter-strip">
+              <div class="counter-item">
+                <span class="counter-num mono" id="sum-total">0</span>
+                <span class="counter-lbl">TOTAL PACKETS</span>
+              </div>
+              <div class="counter-item alert-counter">
+                <span class="counter-num mono" id="sum-threats">0</span>
+                <span class="counter-lbl">INTERCEPTED</span>
+              </div>
+              <div class="counter-item safe-counter">
+                <span class="counter-num mono" id="sum-normal">0</span>
+                <span class="counter-lbl">BENIGN</span>
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- Lower Row: Interactive Attack Injector & Live Security Logs -->
+        <section class="content-row lower-row">
+
+          <!-- Attack Injector Card -->
+          <div class="glass-card injector-card">
+            <div class="card-top-bar">
+              <div class="card-title-group">
+                <span class="card-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                  </svg>
+                </span>
+                <div>
+                  <h3>Interactive Attack Injector</h3>
+                  <span class="card-subtitle">Active Stream: <strong id="active-mode-badge" class="mono"
+                      style="color: var(--status-safe);">Normal Baseline (Continuous)</strong></span>
+                </div>
+              </div>
+
+              <!-- Stream Rate Slider (Positioned Top Right of Injector Box) -->
+              <div class="glass-pill-slider injector-rate-slider"
+                title="Adjust Telemetry Rate (0.5s - 10.0s, default 5.0s)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span class="slider-label">Rate: <strong id="slider-val-text" class="mono">5.0s</strong></span>
+                <input type="range" id="rate-slider" min="0.5" max="10.0" step="0.1" value="5.0"
+                  aria-label="Telemetry Rate Slider">
+              </div>
+            </div>
+
+            <!-- Injector Grid (Frosted Glass Buttons) -->
+            <div class="injector-grid">
+              <button class="glass-action-btn btn-normal active-injection" data-attack="Normal">
+                <span class="btn-dot"></span>
+                <span>Normal Baseline</span>
+              </button>
+              <button class="glass-action-btn" data-attack="False_Data_Injection">
+                <span class="btn-dot"></span>
+                <span>False Data Injection</span>
+              </button>
+              <button class="glass-action-btn" data-attack="DoS_Attack">
+                <span class="btn-dot"></span>
+                <span>SCADA DoS Attack</span>
+              </button>
+              <button class="glass-action-btn" data-attack="Replay_Attack">
+                <span class="btn-dot"></span>
+                <span>Telemetry Replay</span>
+              </button>
+              <button class="glass-action-btn" data-attack="Insider_Threat">
+                <span class="btn-dot"></span>
+                <span>Insider Abuse</span>
+              </button>
+              <button class="glass-action-btn" data-attack="Spoofing_Attack">
+                <span class="btn-dot"></span>
+                <span>PLC Spoofing</span>
+              </button>
+              <button class="glass-action-btn" data-attack="Command_Injection">
+                <span class="btn-dot"></span>
+                <span>Command Injection</span>
+              </button>
+              <button class="glass-action-btn" data-attack="Malware">
+                <span class="btn-dot"></span>
+                <span>Firmware Malware</span>
+              </button>
+              <button class="glass-action-btn" data-attack="Reconnaissance">
+                <span class="btn-dot"></span>
+                <span>Substation Recon</span>
+              </button>
+            </div>
+
+            <!-- Active Packet Inspection Ribbon -->
+            <div class="active-packet-ribbon">
+              <div class="ribbon-item">
+                <span class="r-lbl">PACKET ID</span>
+                <span class="r-val mono" id="active-pid-badge">PKT #0000</span>
+              </div>
+              <div class="ribbon-item">
+                <span class="r-lbl">ORIGIN NODE</span>
+                <span class="r-val mono" id="insp-node">--</span>
+              </div>
+              <div class="ribbon-item">
+                <span class="r-lbl">PROTOCOL</span>
+                <span class="r-val mono" id="insp-proto">--</span>
+              </div>
+              <div class="ribbon-item">
+                <span class="r-lbl">SUBSTATION</span>
+                <span class="r-val mono" id="insp-substation">--</span>
+              </div>
+              <div class="ribbon-item">
+                <span class="r-lbl">CLASSIFICATION</span>
+                <span class="r-val mono" id="insp-type">--</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Live Security Operations Audit Log -->
+          <div class="glass-card terminal-card">
+            <div class="card-top-bar">
+              <div class="card-title-group">
+                <span class="card-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="4 17 10 11 4 5"></polyline>
+                    <line x1="12" y1="19" x2="20" y2="19"></line>
+                  </svg>
+                </span>
+                <div>
+                  <h3>Security Operations Audit Log</h3>
+                  <span class="card-subtitle">Real-time incident response telemetry</span>
+                </div>
+              </div>
+              <button id="clear-log-btn" class="glass-mini-btn" title="Clear log buffer">Clear</button>
+            </div>
+
+            <div class="terminal-container mono" id="terminal-log">
+              <div class="log-line system-line">[SYSTEM] Operations Center online. Listening for telemetry...</div>
+            </div>
+          </div>
+
+        </section>
+
+      </div>
+
+    </main>
+  </div>
+
+  <script src="grid_physics.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>

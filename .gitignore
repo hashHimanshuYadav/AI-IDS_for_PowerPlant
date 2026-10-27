@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+venv/
+.keras/
+__pycache__/
+*.pyc
+*.pkl
+*.keras
+live_stream.json*
+live_detection.json*
+stream_config.json
+node_modules/
+*.zip
+.DS_Store
+data/sim/

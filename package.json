@@ -1,0 +1,16 @@
+{
+  "name": "ai-ids-powerplant",
+  "version": "1.0.0",
+  "description": "AI-Driven Intrusion Detection System for Power Plant ICS",
+  "scripts": {
+    "dev": "node ui/server.js",
+    "start": "node ui/server.js"
+  },
+  "keywords": [
+    "scada",
+    "ids",
+    "power-plant"
+  ],
+  "author": "",
+  "license": "ISC"
+}

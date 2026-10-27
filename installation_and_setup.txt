@@ -1,0 +1,252 @@
+================================================================================
+     AI-DRIVEN INTRUSION DETECTION SYSTEM (AI-IDS) FOR POWER PLANT ICS
+                      INSTALLATION & DEPLOYMENT GUIDE
+================================================================================
+
+TABLE OF CONTENTS:
+1. System Prerequisites
+2. Quickstart Installation (Backend & Web UI)
+3. Operational Execution Modes (Web SOC vs CLI vs Hybrid)
+4. REAL-WORLD DEPLOYMENT ARCHITECTURES (When & How to Deploy on Physical ICS)
+5. REAL-WORLD LIMITATIONS & OPERATIONAL CONSTRAINTS
+6. Maintenance, Model Retraining, & Troubleshooting
+
+================================================================================
+1. SYSTEM PREREQUISITES
+================================================================================
+Before installing, ensure your host environment meets the following specifications:
+
+A. HARDWARE REQUIREMENTS:
+   - Development / Simulation: Dual-core CPU, 4 GB RAM, 2 GB disk space.
+   - Production / Edge Deployment: Quad-core x86_64 or ARM64 processor (e.g.,
+     Intel Core i5/Xeon, Advantech UNO, Moxa Industrial PC, or Raspberry Pi 4/5 8GB),
+     8 GB RAM, gigabit network interface card (NIC) supporting promiscuous mode.
+
+B. SOFTWARE PREREQUISITES:
+   - Operating System: Linux (Ubuntu 20.04/22.04 LTS, Debian 11/12, RHEL 8/9),
+     macOS (Apple Silicon or Intel), or Windows 10/11 (64-bit).
+   - Python: Version 3.8 to 3.11 installed.
+   - Node.js: Version 16.x or higher (v18/v20 LTS recommended) with npm.
+   - Network tools: libpcap / WinPcap / Npcap (if capturing live ethernet traffic).
+
+================================================================================
+2. QUICKSTART INSTALLATION
+================================================================================
+
+STEP 2.1: CLONE OR EXTRACT THE REPOSITORY
+   cd into your designated workspace:
+   $ git clone https://github.com/your-org/AI-IDS-PowerPlant.git
+   $ cd AI-IDS-PowerPlant
+
+STEP 2.2: CONFIGURE PYTHON VIRTUAL ENVIRONMENT
+   Create an isolated environment to prevent package version conflicts:
+
+   - On Linux / macOS:
+     $ python3 -m venv venv
+     $ source venv/bin/activate
+
+   - On Windows (PowerShell):
+     $ python -m venv venv
+     $ .\venv\Scripts\Activate.ps1
+
+STEP 2.3: INSTALL PYTHON DEPENDENCIES
+   $ pip install --upgrade pip
+   $ pip install -r requirements.txt
+
+   (Dependencies include: pandas, numpy, scikit-learn, tensorflow, joblib,
+    python-dotenv, matplotlib, seaborn, and scapy)
+
+STEP 2.4: INSTALL WEB UI DEPENDENCIES
+   The dashboard runs on a lightweight, zero-dependency Node.js HTTP/SSE server.
+   $ cd ui
+   $ npm install
+   $ cd ..
+
+STEP 2.5: VERIFY PRE-TRAINED AI MODELS
+   Verify that the serialized AI models are present in the project root:
+   - rf_powerplant_ids.pkl      (Supervised Random Forest Classifier)
+   - iso_powerplant_ids.pkl     (Unsupervised Isolation Forest Anomaly Detector)
+   - lstm_powerplant_ids.keras  (Deep Learning Temporal LSTM Network)
+   - scaler_powerplant_ids.pkl  (StandardScaler Feature Normalization Weights)
+
+   *(Optional: If you wish to retrain the models on updated ICS datasets,
+     execute the Jupyter Notebook:
+     $ jupyter notebook AI-Driven_Intrusion_Detection_for_Energy_and_Power_Plant_ICS.ipynb)*
+
+================================================================================
+3. OPERATIONAL EXECUTION MODES
+================================================================================
+
+MODE 1: REAL-TIME SCADA WEB OPERATIONS CENTER (RECOMMENDED FOR DEMOS & SOC)
+   1. Launch the server from the `ui/` directory:
+      $ cd ui
+      $ npm start   (or: node server.js)
+
+   2. Access the console via your web browser:
+      URL: http://localhost:5050
+
+   Key Capabilities:
+   - Live Cyber-Physical Oscilloscope (real-time frequency & voltage deviations).
+   - AI Consensus Engine (3-Layer Defense-in-Depth scoring).
+   - Interactive Attack Injector with rate slider (0.5s - 10.0s).
+   - Dock Navigation with 1mm laser border glow highlight.
+   - Audible Web Audio alarm chime and theme switcher (Dark / Light).
+
+MODE 2: STANDALONE CLI SIMULATION PIPELINE
+   Run the engine in headless server or terminal environments:
+
+   Terminal 1 (Telemetry Stream Generator):
+   $ python3 stream_generator.py
+   (Continuously streams telemetry records to live_stream.json at configured rate)
+
+   Terminal 2 (Inference Engine):
+   $ python3 detect.py
+   (Monitors live_stream.json, runs 3-layer AI consensus, and logs verdicts)
+
+================================================================================
+4. REAL-WORLD DEPLOYMENT ARCHITECTURES: IN WHAT CASES IT CAN BE DEPLOYED
+================================================================================
+
+This system can be deployed in operational environments across the following
+four concrete ICS/OT deployment scenarios:
+
+CASE 4.1: PASSIVE OUT-OF-BAND NETWORK TAP / SPAN MIRRORING (PURDUE LEVEL 1 & 2)
+   - Placement: Connected to a SPAN / mirror port of an industrial managed switch
+     inside a power generation substation or turbine control room.
+   - How it Operates:
+     1. The industrial switch mirrors Ethernet packets traversing between the
+        Human-Machine Interface (HMI), Engineering Workstations (EWS), and
+        Programmable Logic Controllers (PLCs) / Remote Terminal Units (RTUs).
+     2. A dedicated network capture script (using Scapy or AF_PACKET sockets)
+        ingests Modbus TCP, DNP3, or IEC 60870-5-104 packets passively without
+        inserting inline latency.
+     3. Telemetry vectors are normalized and evaluated by the 3-layer ensemble.
+     4. Alerts are dispatched to the utility's Central SIEM / SOC (Splunk, QRadar)
+        or SCADA alarm banner via Syslog or Webhooks.
+   - When to Use: The safest, most common industrial deployment method. Zero risk
+     of accidentally dropping legitimate SCADA command packets.
+
+CASE 4.2: INDUSTRIAL EDGE SECURITY GATEWAY / MICRO-APPLIANCE
+   - Placement: Deployed on a DIN-rail industrial PC (IPC) stationed in an
+     electrical substation or distribution feeder cabinet.
+   - How it Operates:
+     The IPC runs a containerized Linux environment with `detect.py` connected
+     to local serial-to-ethernet terminal servers or substation bus networks.
+     It continuously validates physical telemetry plausibility (e.g., verifying
+     whether frequency or active power deviations violate thermodynamic limits
+     before commands reach turbine governors or transformer tap changers).
+   - When to Use: Distributed renewable generation sites (solar photovoltaic
+     farms, wind turbine parks, battery storage installations) that communicate
+     over remote cellular/satellite backhauls and lack dedicated on-site SOC staff.
+
+CASE 4.3: SECONDARY ADVISORY LAYER FOR SCADA HISTORIAN / EMS (PURDUE LEVEL 3)
+   - Placement: Integrated alongside the plant SCADA Historian (OSIsoft PI,
+     AspenTech, Ignition) or Energy Management System (EMS).
+   - How it Operates:
+     The IDS polls the plant OPC-UA server or MQTT broker every 500ms to 2000ms.
+     It applies the Isolation Forest and LSTM sequence models to look for subtle,
+     multi-hour sensor spoofing or low-and-slow false data injection (FDI)
+     attacks designed to evade conventional static threshold alarms.
+   - When to Use: Large-scale combined-cycle thermal power plants, nuclear balance-
+     of-plant monitoring, and regional transmission operations centers.
+
+CASE 4.4: HARDWARE-IN-THE-LOOP (HIL) TESTBEDS & DIGITAL TWIN RANGES
+   - Placement: Integrated with real-time digital simulators (RTDS, OPAL-RT) or
+     laboratory PLC testbenches (Siemens S7-1500, Schneider Modicon, Rockwell ControlLogix).
+   - How it Operates:
+     Used to stress-test control algorithms and validate cybersecurity resilience
+     under simulated cyber warfare, grid blackouts, or coordinated telemetry replay.
+   - When to Use: Certification labs, university research testbeds, and utility
+     pre-commissioning validation suites.
+
+================================================================================
+5. REAL-WORLD LIMITATIONS & OPERATIONAL CONSTRAINTS
+================================================================================
+
+While the AI-IDS ensemble provides advanced multi-layered detection, deploying
+machine learning models in safety-critical power systems presents fundamental
+technical constraints that engineering teams must account for:
+
+LIMITATION 5.1: INFERENCE LATENCY VS. SUB-CYCLE ELECTRICAL TRIPPING
+   - Constraint: Substation protective relays (e.g., SEL-411L, ABB REF615) operate
+     at sub-cycle speeds (4 ms to 16 ms) over IEC 61850 GOOSE protocol to isolate
+     physical faults before electrical equipment sustains permanent damage.
+   - AI Reality: Passing high-dimensional telemetry through feature scalers,
+     Isolation Forests, and recurrent neural networks (LSTM) introduces an
+     inference latency of 15 ms to 50 ms per batch.
+   - Engineering Recommendation: The AI-IDS must NOT replace hard-real-time
+     microprocessor protective relays. It should function as a supervisory
+     cyber-anomaly and reconnaissance detection engine, not as primary primary
+     fault breaker interlock.
+
+LIMITATION 5.2: SENSOR NOISE, SWITCHING TRANSIENTS, & UNPLANNED OUTAGES
+   - Constraint: Real electrical grids experience sudden physical disturbances
+     that are completely non-malicious (e.g., lightning strikes, large inductive
+     motor startups, capacitor bank switching, or sudden renewable drop-offs).
+   - AI Reality: Unsupervised anomaly detectors (Isolation Forest) flag statistical
+     rarity, meaning legitimate physical grid transients can occasionally trigger
+     an outlier anomaly flag.
+   - Mitigation: The system employs a 2-out-of-3 Consensus Engine so that a
+     benign physical transient does not trip a breaker unless confirmed by
+     supervised signature matches or sustained LSTM temporal trajectory.
+
+LIMITATION 5.3: ENCRYPTED & AUTHENTICATED ICS PROTOCOLS
+   - Constraint: Modern OT networks adopting IEC 62351 or DNP3 Secure Authentication
+     (SAv5) use cryptographically signed or TLS-encrypted tunnels.
+   - AI Reality: If network traffic is encrypted end-to-end, deep packet
+     inspection (DPI) of payload registers is impossible without key escrow,
+     bump-in-the-wire TLS proxying, or host-based endpoint agent extraction.
+   - Workaround: In encrypted networks, deploy the IDS at the application layer
+     (reading decrypted OPC-UA / MQTT broker feeds directly from the SCADA server)
+     or analyze transport-layer metadata (packet intervals, flow entropy).
+
+LIMITATION 5.4: CONCEPT DRIFT & CHANGING POWER GENERATION MIX
+   - Constraint: Power plants operate under changing seasonal baselines (summer
+     peak cooling loads vs. winter heating demands, solar irradiance fluctuations,
+     maintenance schedules).
+   - AI Reality: Models trained strictly on winter baselines may experience
+     degraded accuracy or elevated false alarms during peak summer operations.
+   - Mitigation: The model weights must undergo scheduled re-calibration every
+     3 to 6 months using rolling baseline data captured from normal operations.
+
+LIMITATION 5.5: HARDWARE ACCELERATION ON EMBEDDED RTUs
+   - Constraint: Legacy Remote Terminal Units (RTUs) and Programmable Logic
+     Controllers (PLCs) utilize low-power 16-bit or 32-bit microcontrollers with
+     severely constrained RAM (e.g., 64 MB - 512 MB).
+   - AI Reality: Deep learning libraries (TensorFlow / Keras) cannot execute
+     directly on legacy bare-metal PLCs.
+   - Workaround: The AI engine must reside on an external industrial edge PC
+     or dedicated cybersecurity gateway connected via Ethernet, rather than
+     attempting to run firmware-embedded on the PLC itself.
+
+LIMITATION 5.6: IN-LINE BLOCKING HAZARDS (FAIL-OPEN VS. FAIL-CLOSED)
+   - Constraint: In standard IT security, firewalls drop suspicious packets
+     immediately. In power plant ICS, dropping a legitimate control command (such
+     as a boiler pressure release or generator trip command) can lead to equipment
+     explosion, steam pipe rupture, or regional grid blackout.
+   - Strict Protocol: This system should default to passive out-of-band monitoring
+     with human-in-the-loop operator confirmation, rather than autonomous
+     in-line packet dropping, unless explicitly tied to a verified safety interlock.
+
+================================================================================
+6. MAINTENANCE & TROUBLESHOOTING
+================================================================================
+
+A. PORT CONFLICT ON WEB UI (PORT 5050):
+   If port 5050 is occupied by another application, pass a custom port:
+   $ PORT=8080 node server.js
+
+B. TENSORFLOW CPU COMPATIBILITY:
+   If your CPU does not support AVX2 instructions, install the CPU-compatible
+   TensorFlow wheel or run the inference purely using the Random Forest and
+   Isolation Forest models via scikit-learn.
+
+C. LIVE STREAM RESYNCHRONIZATION:
+   If `live_stream.json` becomes desynchronized or corrupted, simply delete
+   the file and restart `stream_generator.py` or the Web UI server:
+   $ rm live_stream.json
+   $ npm start
+
+================================================================================
+END OF GUIDE
+================================================================================
