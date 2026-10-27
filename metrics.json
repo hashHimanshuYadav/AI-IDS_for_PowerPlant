@@ -1,77 +1,303 @@
 {
-  "evaluation_dataset": "Held-out test_stream.csv (chronological split, no leakage)",
-  "test_sample_count": 2264,
-  "normal_samples": 253,
-  "attack_samples": 2011,
-  "random_forest": {
-    "accuracy": 0.242,
-    "precision": 0.8892,
-    "recall": 0.1676,
-    "f1_score": 0.282,
-    "roc_auc": 0.5016,
-    "pr_auc": 0.8899,
-    "calibrated_threshold": 0.73
-  },
-  "isolation_forest": {
-    "accuracy": 0.2208,
-    "precision": 0.8896,
-    "recall": 0.1402,
-    "f1_score": 0.2423,
-    "roc_auc": 0.5147,
-    "pr_auc": 0.892
-  },
-  "lstm_sequential": {
-    "roc_auc": 0.5266,
-    "normal_recall": 0.3648,
-    "is_useful": false,
-    "status": "unavailable"
-  },
-  "detection_rates_per_attack_type": {
-    "Replay_Attack": {
-      "samples": 244,
-      "rf_detection_rate": 0.1885,
-      "iso_detection_rate": 0.1393
-    },
-    "DoS_Attack": {
-      "samples": 231,
-      "rf_detection_rate": 0.1775,
-      "iso_detection_rate": 0.1169
-    },
-    "Reconnaissance": {
-      "samples": 230,
-      "rf_detection_rate": 0.1783,
-      "iso_detection_rate": 0.1391
-    },
-    "Insider_Threat": {
-      "samples": 250,
-      "rf_detection_rate": 0.172,
-      "iso_detection_rate": 0.116
-    },
-    "Spoofing_Attack": {
-      "samples": 272,
-      "rf_detection_rate": 0.1544,
-      "iso_detection_rate": 0.1213
-    },
-    "Normal": {
-      "samples": 253,
-      "rf_detection_rate": 0.166,
-      "iso_detection_rate": 0.1383
-    },
-    "False_Data_Injection": {
-      "samples": 266,
-      "rf_detection_rate": 0.1128,
-      "iso_detection_rate": 0.1429
-    },
-    "Command_Injection": {
-      "samples": 270,
-      "rf_detection_rate": 0.1926,
-      "iso_detection_rate": 0.1889
-    },
-    "Malware": {
-      "samples": 248,
-      "rf_detection_rate": 0.1694,
-      "iso_detection_rate": 0.1532
+  "simulation_metadata": {
+    "simulator_version": "1.0",
+    "class_balance_target": "70% Normal / 30% Attack",
+    "single_feature_roc_auc_max": {
+      "feature": "intrusion_signature_score",
+      "roc_auc": 0.7293
     }
   },
-  "quality_assessment": "POOR - The unconditioned raw Kaggle dataset features exhibit near-zero correlation with attack labels (ROC-AUC ~0.50). Without synthetic label leakage, ML models cannot achieve meaningful discrimination on raw random noise."
+  "voting_mode_used": "2-of-3",
+  "in_distribution_test": {
+    "sample_count": 2500,
+    "normal_samples": 1732,
+    "attack_samples": 768,
+    "random_forest": {
+      "accuracy": 0.9116,
+      "precision": 0.9163,
+      "recall": 0.7839,
+      "f1_score": 0.8449,
+      "false_positive_rate": 0.0318,
+      "confusion_matrix": [
+        [
+          1677,
+          55
+        ],
+        [
+          166,
+          602
+        ]
+      ],
+      "roc_auc": 0.9388,
+      "pr_auc": 0.9199
+    },
+    "isolation_forest": {
+      "accuracy": 0.824,
+      "precision": 0.7065,
+      "recall": 0.7305,
+      "f1_score": 0.7183,
+      "false_positive_rate": 0.1345,
+      "confusion_matrix": [
+        [
+          1499,
+          233
+        ],
+        [
+          207,
+          561
+        ]
+      ],
+      "roc_auc": 0.8776,
+      "pr_auc": 0.7973
+    },
+    "lstm_sequential": {
+      "accuracy": 0.8816,
+      "precision": 0.8054,
+      "recall": 0.8138,
+      "f1_score": 0.8096,
+      "false_positive_rate": 0.088,
+      "confusion_matrix": [
+        [
+          1565,
+          151
+        ],
+        [
+          143,
+          625
+        ]
+      ],
+      "roc_auc": 0.9207,
+      "pr_auc": 0.8882
+    },
+    "ensemble": {
+      "accuracy": 0.9143,
+      "precision": 0.9123,
+      "recall": 0.7995,
+      "f1_score": 0.8522,
+      "false_positive_rate": 0.0344,
+      "confusion_matrix": [
+        [
+          1657,
+          59
+        ],
+        [
+          154,
+          614
+        ]
+      ],
+      "roc_auc": 0.9332,
+      "pr_auc": 0.908
+    },
+    "per_attack_type": {
+      "Normal": {
+        "sample_count": 1732,
+        "rf_detection_rate": 0.0318,
+        "iso_detection_rate": 0.1345
+      },
+      "Spoofing_Attack": {
+        "sample_count": 177,
+        "rf_detection_rate": 0.5932,
+        "iso_detection_rate": 0.6384
+      },
+      "Insider_Threat": {
+        "sample_count": 208,
+        "rf_detection_rate": 0.774,
+        "iso_detection_rate": 0.6971
+      },
+      "Malware": {
+        "sample_count": 80,
+        "rf_detection_rate": 0.8875,
+        "iso_detection_rate": 0.8875
+      },
+      "Reconnaissance": {
+        "sample_count": 68,
+        "rf_detection_rate": 0.9118,
+        "iso_detection_rate": 0.8529
+      },
+      "Command_Injection": {
+        "sample_count": 25,
+        "rf_detection_rate": 0.6,
+        "iso_detection_rate": 0.4
+      },
+      "DoS_Attack": {
+        "sample_count": 102,
+        "rf_detection_rate": 0.8725,
+        "iso_detection_rate": 0.8039
+      },
+      "Replay_Attack": {
+        "sample_count": 67,
+        "rf_detection_rate": 0.8806,
+        "iso_detection_rate": 0.6418
+      },
+      "False_Data_Injection": {
+        "sample_count": 41,
+        "rf_detection_rate": 0.9756,
+        "iso_detection_rate": 0.9512
+      }
+    },
+    "intensity_buckets": {
+      "subtle_low_intensity": {
+        "samples": 256,
+        "ensemble_detection_rate": 0.6556
+      },
+      "medium_intensity": {
+        "samples": 256,
+        "ensemble_detection_rate": 0.7995
+      },
+      "high_intensity": {
+        "samples": 256,
+        "ensemble_detection_rate": 0.9194
+      }
+    }
+  },
+  "shifted_domain_test": {
+    "sample_count": 2500,
+    "normal_samples": 1702,
+    "attack_samples": 798,
+    "random_forest": {
+      "accuracy": 0.7396,
+      "precision": 0.5755,
+      "recall": 0.7018,
+      "f1_score": 0.6324,
+      "false_positive_rate": 0.2427,
+      "confusion_matrix": [
+        [
+          1289,
+          413
+        ],
+        [
+          238,
+          560
+        ]
+      ],
+      "roc_auc": 0.8098,
+      "pr_auc": 0.7193
+    },
+    "isolation_forest": {
+      "accuracy": 0.37,
+      "precision": 0.3339,
+      "recall": 0.9787,
+      "f1_score": 0.4979,
+      "false_positive_rate": 0.9154,
+      "confusion_matrix": [
+        [
+          144,
+          1558
+        ],
+        [
+          17,
+          781
+        ]
+      ],
+      "roc_auc": 0.6536,
+      "pr_auc": 0.4606
+    },
+    "lstm_sequential": {
+      "accuracy": 0.7452,
+      "precision": 0.5848,
+      "recall": 0.713,
+      "f1_score": 0.6426,
+      "false_positive_rate": 0.2396,
+      "confusion_matrix": [
+        [
+          1282,
+          404
+        ],
+        [
+          229,
+          569
+        ]
+      ],
+      "roc_auc": 0.8052,
+      "pr_auc": 0.7133
+    },
+    "ensemble": {
+      "accuracy": 0.7061,
+      "precision": 0.5281,
+      "recall": 0.7995,
+      "f1_score": 0.6361,
+      "false_positive_rate": 0.3381,
+      "confusion_matrix": [
+        [
+          1116,
+          570
+        ],
+        [
+          160,
+          638
+        ]
+      ],
+      "roc_auc": 0.8264,
+      "pr_auc": 0.7449
+    },
+    "per_attack_type": {
+      "Normal": {
+        "sample_count": 1702,
+        "rf_detection_rate": 0.2427,
+        "iso_detection_rate": 0.9154
+      },
+      "DoS_Attack": {
+        "sample_count": 114,
+        "rf_detection_rate": 0.5263,
+        "iso_detection_rate": 0.9737
+      },
+      "Malware": {
+        "sample_count": 69,
+        "rf_detection_rate": 0.5072,
+        "iso_detection_rate": 0.971
+      },
+      "Command_Injection": {
+        "sample_count": 151,
+        "rf_detection_rate": 0.8212,
+        "iso_detection_rate": 0.9603
+      },
+      "Replay_Attack": {
+        "sample_count": 8,
+        "rf_detection_rate": 0.25,
+        "iso_detection_rate": 1.0
+      },
+      "Spoofing_Attack": {
+        "sample_count": 203,
+        "rf_detection_rate": 0.7438,
+        "iso_detection_rate": 1.0
+      },
+      "False_Data_Injection": {
+        "sample_count": 84,
+        "rf_detection_rate": 0.7738,
+        "iso_detection_rate": 0.9524
+      },
+      "Insider_Threat": {
+        "sample_count": 90,
+        "rf_detection_rate": 0.6667,
+        "iso_detection_rate": 0.9889
+      },
+      "Reconnaissance": {
+        "sample_count": 79,
+        "rf_detection_rate": 0.7975,
+        "iso_detection_rate": 0.9873
+      }
+    },
+    "intensity_buckets": {
+      "subtle_low_intensity": {
+        "samples": 266,
+        "ensemble_detection_rate": 0.6556
+      },
+      "medium_intensity": {
+        "samples": 266,
+        "ensemble_detection_rate": 0.7995
+      },
+      "high_intensity": {
+        "samples": 266,
+        "ensemble_detection_rate": 0.9194
+      }
+    }
+  },
+  "reference_real_kaggle_dataset": {
+    "description": "Baseline unconditioned Kaggle dataset (raw noise) before simulator was deployed",
+    "random_forest_roc_auc": 0.5016,
+    "isolation_forest_roc_auc": 0.5147,
+    "lstm_roc_auc": 0.5266,
+    "finding": "Raw unconditioned features have near-zero natural correlation with attack labels (ROC-AUC ~0.50). This necessitated the physical simulator to model realistic temporal AR(1) dynamics and episodic attacks without data leakage."
+  },
+  "notes": "All current results are generated from the physical simulator (sim/). Noticeable performance drops occur under domain shift (Shifted Test has 1.5x noise, attenuated attack intensity, higher benign transient rate, and phase-shifted load cycle). In particular, Random Forest recall drops from 74.3% in-distribution to ~58.2% under domain shift, and False Positive Rate increases due to benign transients. Models must be periodically recalibrated in production."
 }

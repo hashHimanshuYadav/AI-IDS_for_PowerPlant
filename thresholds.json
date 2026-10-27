@@ -1,7 +1,7 @@
 {
-  "rf_threshold": 0.73,
+  "rf_threshold": 0.48,
   "iso_anomaly_flag": 1,
   "lstm_threshold": 0.55,
-  "lstm_is_useful": false,
-  "voting_mode": "2-of-2"
+  "lstm_is_useful": true,
+  "voting_mode": "2-of-3"
 }
