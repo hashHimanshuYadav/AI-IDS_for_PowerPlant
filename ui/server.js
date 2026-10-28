@@ -91,9 +91,9 @@ function checkDetectionOutput() {
       packet_id: detectionData.packet_id,
       timestamp: detectionData.timestamp || new Date().toISOString(),
       node_id: detectionData.node_id || 'N/A',
-      substation: detectionData.substation || 'Distribution',
-      protocol: detectionData.protocol || 'DNP3',
-      device_type: detectionData.device_type || 'RTU',
+      substation: (detectionData.substation !== undefined && detectionData.substation !== null && detectionData.substation !== '') ? detectionData.substation : 'N/A',
+      protocol: (detectionData.protocol !== undefined && detectionData.protocol !== null && detectionData.protocol !== '') ? detectionData.protocol : 'N/A',
+      device_type: (detectionData.device_type !== undefined && detectionData.device_type !== null && detectionData.device_type !== '') ? detectionData.device_type : 'N/A',
       simulated_class: detectionData.simulated_class || 'Normal',
       source: detectionData.source || 'simulator',
       engine_offline: false,
@@ -208,27 +208,48 @@ const server = http.createServer((req, res) => {
   }
 
   // Stream Configuration Endpoint (Rate & Pause/Resume)
-  if (pathname === '/api/config' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', () => {
+  if (pathname === '/api/config') {
+    if (req.method === 'GET') {
       try {
-        const data = JSON.parse(body || '{}');
-        if (typeof data.isStreaming === 'boolean') {
-          isStreaming = data.isStreaming;
+        if (fs.existsSync(CONFIG_FILE)) {
+          const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+          if (typeof cfg.interval === 'number' && cfg.interval > 0) {
+            streamIntervalMs = Math.round(cfg.interval * 1000);
+          }
+          if (typeof cfg.is_streaming === 'boolean') {
+            isStreaming = cfg.is_streaming;
+          }
+          if (cfg.selected_attack) {
+            selectedAttack = cfg.selected_attack;
+          }
         }
-        if (typeof data.intervalMs === 'number' && data.intervalMs >= 100) {
-          streamIntervalMs = data.intervalMs;
+      } catch (e) {}
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ isStreaming, streamIntervalMs, interval: streamIntervalMs / 1000.0, selectedAttack }));
+      return;
+    }
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', () => {
+        try {
+          const data = JSON.parse(body || '{}');
+          if (typeof data.isStreaming === 'boolean') {
+            isStreaming = data.isStreaming;
+          }
+          if (typeof data.intervalMs === 'number' && data.intervalMs >= 100) {
+            streamIntervalMs = data.intervalMs;
+          }
+          updateStreamConfigFile();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ isStreaming, streamIntervalMs, interval: streamIntervalMs / 1000.0 }));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
         }
-        updateStreamConfigFile();
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ isStreaming, streamIntervalMs }));
-      } catch (err) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
-      }
-    });
-    return;
+      });
+      return;
+    }
   }
 
   // Stats Endpoint

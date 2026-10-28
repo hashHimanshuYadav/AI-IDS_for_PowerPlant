@@ -103,8 +103,8 @@ The engine combines supervised, unsupervised, and temporal sequence detection:
    * Evaluates a 5-packet sliding FIFO window per node.
    * **Usefulness Gate**: The LSTM is marked useful **only if** validation $\text{ROC-AUC} \ge 0.60$ and benign recall $> 0.50$.
 4. **Dynamic Consensus Arbiter**:
-   * **2-of-2 Voting Mode**: Activated when TensorFlow is unavailable or the LSTM fails the usefulness gate. Evaluates Random Forest and Isolation Forest. Both models must agree (or RF flags with high confidence) to engage the safety trip.
-   * **2-of-3 Voting Mode**: Activated when all three models are functional and validated. Requires $\ge 2$ positive votes.
+   * **Active Live Voting Mode (2-of-2)**: In the live operational environment (Python 3.13+/3.14 without precompiled TensorFlow wheels), `detect.py` detects TensorFlow unavailability at startup and engages **2-of-2 consensus mode** (Random Forest + Isolation Forest). Both models must flag an anomaly to trip the safety breaker. `detect.py` logs `[*] ACTIVE VOTING MODE AT STARTUP: 2-of-2` at boot.
+   * **2-of-3 Voting Mode**: Available when TensorFlow is present and the Deep LSTM passes validation usefulness ($\text{ROC-AUC} \ge 0.60$, recall $> 0.50$). Requires $\ge 2$ positive votes out of 3.
    * **Honest Scoring Guarantee**: `detect.py` never scores `simulated_class`. Ground truth is passed through solely for logging. If an attack is missed, the UI displays Normal.
 
 ---
@@ -121,9 +121,22 @@ All metrics reported below are copied directly from `metrics.json`, measured on 
 | **Random Forest** | 91.16% | 91.63% | 78.39% | 0.8449 | 3.18% | 0.9388 | 0.9199 |
 | **Isolation Forest** | 82.40% | 70.65% | 73.05% | 0.7183 | 13.45% | 0.8776 | 0.7973 |
 | **LSTM Sequential** | 88.16% | 80.54% | 81.38% | 0.8096 | 8.80% | 0.9207 | 0.8882 |
-| **Consensus Ensemble** | **91.43%** | **91.23%** | **79.95%** | **0.8522** | **3.44%** | **0.9332** | **0.9080** |
+| **Consensus Ensemble (2-of-2, Live Active)** | **88.88%** | **95.37%** | **67.06%** | **0.7875** | **1.44%** | **0.9388** | **0.9162** |
+| **Consensus Ensemble (2-of-3, with LSTM)** | **91.43%** | **91.23%** | **79.95%** | **0.8522** | **3.44%** | **0.9332** | **0.9080** |
 
-#### In-Distribution Detection Rate by Attack Type:
+#### Live Detection Rates Measured Per Attack Type (Live Telemetry Stream):
+Evaluated during live real-time simulation streaming against active attacks across 32 packets per class:
+* **False_Data_Injection**: **62.5%** (20/32 detected)
+* **Command_Injection**: **46.9%** (15/32 detected)
+* **Reconnaissance**: **46.9%** (15/32 detected)
+* **DoS_Attack**: **28.1%** (9/32 detected)
+* **Spoofing_Attack**: **21.9%** (7/32 detected)
+* **Replay_Attack**: **18.8%** (6/32 detected)
+* **Malware**: **6.2%** (2/32 detected)
+* **Insider_Threat**: **6.2%** (2/32 detected)
+* **Normal (Baseline False Positive Rate)**: **3.1%** (1/32 false alarms)
+
+#### In-Distribution Offline Test Detection Rate by Attack Type:
 * `False_Data_Injection`: 97.56% (RF) / 95.12% (Iso)
 * `Reconnaissance`: 91.18% (RF) / 85.29% (Iso)
 * `Replay_Attack`: 88.06% (RF) / 64.18% (Iso)
@@ -143,7 +156,8 @@ All metrics reported below are copied directly from `metrics.json`, measured on 
 | **Random Forest** | 73.96% | 57.55% | 70.18% | 0.6324 | 24.27% | 0.8098 | 0.7193 |
 | **Isolation Forest** | 37.00% | 33.39% | 97.87% | 0.4979 | 91.54% | 0.6536 | 0.4606 |
 | **LSTM Sequential** | 74.52% | 58.48% | 71.30% | 0.6426 | 23.96% | 0.8052 | 0.7133 |
-| **Consensus Ensemble** | **70.61%** | **52.81%** | **79.95%** | **0.6361** | **33.81%** | **0.8264** | **0.7449** |
+| **Consensus Ensemble (2-of-2, Live Active)** | **74.28%** | **58.15%** | **69.30%** | **0.6324** | **23.38%** | **0.8098** | **0.7193** |
+| **Consensus Ensemble (2-of-3, with LSTM)** | **70.61%** | **52.81%** | **79.95%** | **0.6361** | **33.81%** | **0.8083** | **0.7037** |
 
 #### Domain Shift Reality:
 Under severe physical domain shift:

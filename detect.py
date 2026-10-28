@@ -73,11 +73,7 @@ class MockBase:
 
 class SafeNumpyUnpickler(joblib.numpy_pickle.NumpyUnpickler):
     def find_class(self, module, name):
-        if module.startswith('sklearn') or module.startswith('scipy') or module.startswith('numpy'):
-            if hasattr(np, name):
-                return getattr(np, name)
-            if hasattr(np.dtypes, name):
-                return getattr(np.dtypes, name)
+        if module.startswith('sklearn') or module.startswith('scipy'):
             return MockBase
         try:
             return super().find_class(module, name)
@@ -111,7 +107,7 @@ def scale_features(raw_feats):
     return (x - scaler.mean_) / scaler.scale_
 
 def predict_rf_prob(x_scaled):
-    x = np.asarray(x_scaled, dtype=float).ravel()
+    x = np.asarray(x_scaled, dtype=np.float32).ravel()
     votes = []
     for est in rf_model.estimators_:
         node_id = 0
@@ -133,10 +129,10 @@ def c_factor(n):
         return 0.0
     if n == 2:
         return 1.0
-    return 2.0 * (np.log(n - 1) + 0.5772156649) - (2.0 * (n - 1) / n)
+    return 2.0 * (np.log(n - 1.0) + 0.5772156649015329) - (2.0 * (n - 1.0) / n)
 
 def score_iso(x_scaled):
-    x = np.asarray(x_scaled, dtype=float).ravel()
+    x = np.asarray(x_scaled, dtype=np.float32).ravel()
     paths = []
     for est in iso_model.estimators_:
         node_id = 0
@@ -150,16 +146,12 @@ def score_iso(x_scaled):
             else:
                 node_id = nodes[node_id][1]
             depth += 1
-        n_node_samples = nodes[node_id][4]
+        n_node_samples = nodes[node_id][5]
         paths.append(depth + c_factor(n_node_samples))
     mean_path = np.mean(paths)
-    c = c_factor(getattr(iso_model, 'max_samples_', 256))
+    c = c_factor(float(getattr(iso_model, 'max_samples_', 256)))
     score = 2.0 ** (-mean_path / c) if c > 0 else 0.5
-    offset = getattr(iso_model, 'offset_', -0.5)
-    if not isinstance(offset, (int, float, np.number)):
-        offset = -0.5
-    else:
-        offset = float(offset)
+    offset = float(getattr(iso_model, 'offset_', -0.5123615978188237))
     decision = -score - offset
     is_anomaly = 1 if decision < 0 else 0
     return is_anomaly, float(score)
@@ -171,18 +163,20 @@ lstm_is_useful = bool(thresholds.get('lstm_is_useful', False))
 def is_tf_available():
     if os.environ.get('DISABLE_TF', '0') == '1':
         return False
-    import subprocess
+    # Pre-compiled TensorFlow C-extensions are incompatible with Python 3.13+ ABIs
+    if sys.version_info >= (3, 13) and os.environ.get('ENABLE_TF', '0') != '1':
+        return False
+    import importlib.util
+    if importlib.util.find_spec('tensorflow') is None:
+        return False
     try:
-        res = subprocess.run(
-            [sys.executable, "-c", "import tensorflow; print('OK')"],
-            capture_output=True, text=True, timeout=2
-        )
-        return res.returncode == 0 and "OK" in res.stdout
+        import tensorflow as tf
+        return True
     except Exception:
         return False
 
 if lstm_is_useful:
-    print("[-] Checking TensorFlow availability for LSTM...", flush=True)
+    print("[-] Evaluating TensorFlow availability for Deep LSTM model...", flush=True)
     if is_tf_available():
         try:
             import tensorflow as tf
@@ -199,7 +193,7 @@ if lstm_is_useful:
             lstm_model = None
             lstm_is_useful = False
     else:
-        print("[*] TensorFlow environment unavailable or timed out. Operating in honest 2-of-2 consensus mode.")
+        print("[*] TensorFlow environment unavailable. Operating in honest 2-of-2 consensus mode.")
         lstm_model = None
         lstm_is_useful = False
 else:
@@ -207,6 +201,7 @@ else:
     print("[*] Operating in honest 2-of-2 consensus mode (RF + Isolation Forest). No synthetic scores will be faked.")
 
 voting_mode = "2-of-3" if (lstm_model is not None and lstm_is_useful) else "2-of-2"
+print(f"[*] ACTIVE VOTING MODE AT STARTUP: {voting_mode}")
 print(f"[+] Consensus Engine: {voting_mode} voting mode active.\n")
 
 # Per-node 5-packet sliding windows for sequential temporal analysis

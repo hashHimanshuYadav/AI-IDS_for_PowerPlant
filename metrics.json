@@ -70,23 +70,23 @@
       "pr_auc": 0.8882
     },
     "ensemble": {
-      "accuracy": 0.9143,
-      "precision": 0.9123,
-      "recall": 0.7995,
-      "f1_score": 0.8522,
-      "false_positive_rate": 0.0344,
+      "accuracy": 0.8888,
+      "precision": 0.9537,
+      "recall": 0.6706,
+      "f1_score": 0.7875,
+      "false_positive_rate": 0.0144,
       "confusion_matrix": [
         [
-          1657,
-          59
+          1707,
+          25
         ],
         [
-          154,
-          614
+          253,
+          515
         ]
       ],
-      "roc_auc": 0.9332,
-      "pr_auc": 0.908
+      "roc_auc": 0.9222,
+      "pr_auc": 0.8861
     },
     "per_attack_type": {
       "Normal": {
@@ -148,6 +148,44 @@
         "samples": 256,
         "ensemble_detection_rate": 0.9194
       }
+    },
+    "ensemble_2_of_2": {
+      "accuracy": 0.8888,
+      "precision": 0.9537,
+      "recall": 0.6706,
+      "f1_score": 0.7875,
+      "false_positive_rate": 0.0144,
+      "confusion_matrix": [
+        [
+          1707,
+          25
+        ],
+        [
+          253,
+          515
+        ]
+      ],
+      "roc_auc": 0.9222,
+      "pr_auc": 0.8861
+    },
+    "ensemble_2_of_3": {
+      "accuracy": 0.9124,
+      "precision": 0.9165,
+      "recall": 0.7865,
+      "f1_score": 0.8465,
+      "false_positive_rate": 0.0318,
+      "confusion_matrix": [
+        [
+          1677,
+          55
+        ],
+        [
+          164,
+          604
+        ]
+      ],
+      "roc_auc": 0.9391,
+      "pr_auc": 0.9162
     }
   },
   "shifted_domain_test": {
@@ -212,23 +250,23 @@
       "pr_auc": 0.7133
     },
     "ensemble": {
-      "accuracy": 0.7061,
-      "precision": 0.5281,
-      "recall": 0.7995,
-      "f1_score": 0.6361,
-      "false_positive_rate": 0.3381,
+      "accuracy": 0.7428,
+      "precision": 0.5815,
+      "recall": 0.693,
+      "f1_score": 0.6324,
+      "false_positive_rate": 0.2338,
       "confusion_matrix": [
         [
-          1116,
-          570
+          1304,
+          398
         ],
         [
-          160,
-          638
+          245,
+          553
         ]
       ],
-      "roc_auc": 0.8264,
-      "pr_auc": 0.7449
+      "roc_auc": 0.8057,
+      "pr_auc": 0.7155
     },
     "per_attack_type": {
       "Normal": {
@@ -290,6 +328,44 @@
         "samples": 266,
         "ensemble_detection_rate": 0.9194
       }
+    },
+    "ensemble_2_of_2": {
+      "accuracy": 0.7428,
+      "precision": 0.5815,
+      "recall": 0.693,
+      "f1_score": 0.6324,
+      "false_positive_rate": 0.2338,
+      "confusion_matrix": [
+        [
+          1304,
+          398
+        ],
+        [
+          245,
+          553
+        ]
+      ],
+      "roc_auc": 0.8057,
+      "pr_auc": 0.7155
+    },
+    "ensemble_2_of_3": {
+      "accuracy": 0.7416,
+      "precision": 0.5785,
+      "recall": 0.7018,
+      "f1_score": 0.6342,
+      "false_positive_rate": 0.2397,
+      "confusion_matrix": [
+        [
+          1294,
+          408
+        ],
+        [
+          238,
+          560
+        ]
+      ],
+      "roc_auc": 0.8101,
+      "pr_auc": 0.7183
     }
   },
   "reference_real_kaggle_dataset": {
@@ -299,5 +375,10 @@
     "lstm_roc_auc": 0.5266,
     "finding": "Raw unconditioned features have near-zero natural correlation with attack labels (ROC-AUC ~0.50). This necessitated the physical simulator to model realistic temporal AR(1) dynamics and episodic attacks without data leakage."
   },
-  "notes": "All current results are generated from the physical simulator (sim/). Noticeable performance drops occur under domain shift (Shifted Test has 1.5x noise, attenuated attack intensity, higher benign transient rate, and phase-shifted load cycle). In particular, Random Forest recall drops from 74.3% in-distribution to ~58.2% under domain shift, and False Positive Rate increases due to benign transients. Models must be periodically recalibrated in production."
+  "notes": "All current results are generated from the physical simulator (sim/). Noticeable performance drops occur under domain shift (Shifted Test has 1.5x noise, attenuated attack intensity, higher benign transient rate, and phase-shifted load cycle). In particular, Random Forest recall drops from 74.3% in-distribution to ~58.2% under domain shift, and False Positive Rate increases due to benign transients. Models must be periodically recalibrated in production.",
+  "voting_mode_live": "2-of-2",
+  "voting_modes_evaluated": [
+    "2-of-2",
+    "2-of-3"
+  ]
 }

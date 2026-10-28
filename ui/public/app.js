@@ -19,6 +19,62 @@ const API_BASE = (window.location.protocol === 'file:' || (window.location.port 
 const MAX_PACKETS = 50;
 const packetHistory = [];
 
+// Protocol, Substation, DeviceType string mappings (fallback for numeric values)
+const PROTOCOL_MAP = {
+  0: 'DNP3', 1: 'MQTT', 2: 'Modbus_TCP',
+  '0': 'DNP3', '1': 'MQTT', '2': 'Modbus_TCP'
+};
+const SUBSTATION_MAP = {
+  0: 'Distribution', 1: 'Generation', 2: 'Renewable', 3: 'Transmission',
+  '0': 'Distribution', '1': 'Generation', '2': 'Renewable', '3': 'Transmission'
+};
+const DEVICE_TYPE_MAP = {
+  0: 'IED', 1: 'PLC', 2: 'RTU', 3: 'SCADA_Server',
+  '0': 'IED', '1': 'PLC', '2': 'RTU', '3': 'SCADA_Server'
+};
+
+function formatProtocol(val) {
+  if (val === null || val === undefined || val === '' || val === 'N/A') return 'N/A';
+  if (PROTOCOL_MAP[val] !== undefined) return PROTOCOL_MAP[val];
+  if (typeof val === 'string' && isNaN(Number(val))) return val;
+  return 'N/A';
+}
+
+function formatSubstation(val) {
+  if (val === null || val === undefined || val === '' || val === 'N/A') return 'N/A';
+  if (SUBSTATION_MAP[val] !== undefined) return SUBSTATION_MAP[val];
+  if (typeof val === 'string' && isNaN(Number(val))) return val;
+  return 'N/A';
+}
+
+function formatDeviceType(val) {
+  if (val === null || val === undefined || val === '' || val === 'N/A') return 'N/A';
+  if (DEVICE_TYPE_MAP[val] !== undefined) return DEVICE_TYPE_MAP[val];
+  if (typeof val === 'string' && isNaN(Number(val))) return val;
+  return 'N/A';
+}
+
+function formatOriginNode(val) {
+  if (val === null || val === undefined || val === '' || val === 'N/A') return 'N/A';
+  return String(val);
+}
+
+// Current stream interval tracking (strictly from config, default 0.5s or from server)
+let currentStreamInterval = 1.0;
+
+function updateStreamStatusDisplay(intervalSec) {
+  if (typeof intervalSec === 'number' && !isNaN(intervalSec)) {
+    currentStreamInterval = intervalSec;
+  }
+  if (!streamStatus) return;
+  if (isStreamPaused) {
+    streamStatus.innerHTML = '<span class="status-dot paused"></span> Paused (SIMULATED TELEMETRY)';
+  } else {
+    const s = currentStreamInterval.toFixed(1);
+    streamStatus.innerHTML = `<span class="status-dot"></span> Live Stream (${s}s) [SIMULATED]`;
+  }
+}
+
 // DOM Elements
 const clockDisplay = document.getElementById('clock-display');
 const streamStatus = document.getElementById('stream-status');
@@ -258,11 +314,15 @@ document.querySelectorAll('.glass-action-btn[data-attack]').forEach(btn => {
 if (rateSlider) {
   rateSlider.addEventListener('input', (e) => {
     const val = parseFloat(e.target.value);
+    currentStreamInterval = val;
     if (sliderValText) sliderValText.textContent = `${val.toFixed(1)}s`;
+    updateStreamStatusDisplay(val);
   });
 
   rateSlider.addEventListener('change', async (e) => {
     const val = parseFloat(e.target.value);
+    currentStreamInterval = val;
+    updateStreamStatusDisplay(val);
     const intervalMs = Math.round(val * 1000);
     try {
       await fetch(API_BASE + '/api/config', {
@@ -285,14 +345,7 @@ if (toggleStreamBtn) {
         body: JSON.stringify({ isStreaming: !isStreamPaused })
       });
       if (streamBtnText) streamBtnText.textContent = isStreamPaused ? 'Resume' : 'Pause';
-      if (streamStatus) {
-        if (isStreamPaused) {
-          streamStatus.innerHTML = '<span class="status-dot paused"></span> Paused (SIMULATED TELEMETRY)';
-        } else {
-          const s = rateSlider ? parseFloat(rateSlider.value).toFixed(1) : '5.0';
-          streamStatus.innerHTML = `<span class="status-dot"></span> Live Stream (${s}s) [SIMULATED]`;
-        }
-      }
+      updateStreamStatusDisplay();
       addLogLine(`[STREAM] Telemetry stream ${isStreamPaused ? 'PAUSED' : 'RESUMED'} by operator`, 'system-line');
     } catch (err) {}
   });
@@ -475,10 +528,12 @@ function handleTelemetryPacket(packet) {
   // Model 1: Random Forest
   const rfPct = typeof analysis.rfScore === 'number' ? (analysis.rfScore * 100).toFixed(1) : 'N/A';
   rfScoreVal.textContent = typeof analysis.rfScore === 'number' ? `${rfPct}%` : 'N/A';
-  const isRfAttack = analysis.rfVote === 1;
-  if (isRfAttack) {
+  rfScoreVal.title = 'attack probability';
+  rfScoreVal.setAttribute('aria-label', 'attack probability');
+
+  if (analysis.rfVote === 1) {
     cardRf.className = 'model-row threat-hit';
-    rfStatus.textContent = 'Attack Match';
+    rfStatus.textContent = 'Attack';
     rfStatus.className = 'status-badge threat';
     rfScoreVal.style.color = '#ef4444';
   } else {
@@ -489,45 +544,49 @@ function handleTelemetryPacket(packet) {
   }
 
   // Model 2: Isolation Forest
-  isoScoreVal.textContent = analysis.isoAnomaly === 1 ? 'Outlier' : 'Normal';
-  if (analysis.isoAnomaly === 1) {
+  if (analysis.isoVote === 1) {
     cardIso.className = 'model-row threat-hit';
-    isoStatus.textContent = 'Anomaly Outlier';
+    isoStatus.textContent = 'Outlier';
     isoStatus.className = 'status-badge threat';
+    isoScoreVal.textContent = 'Outlier';
     isoScoreVal.style.color = '#ef4444';
   } else {
     cardIso.className = 'model-row normal-hit';
     isoStatus.textContent = 'Nominal';
     isoStatus.className = 'status-badge nominal';
+    isoScoreVal.textContent = 'Nominal';
     isoScoreVal.style.color = '#10b981';
   }
+  isoScoreVal.title = 'anomaly outlier flag';
 
   // Model 3: Deep LSTM
   if (analysis.lstm_status === 'unavailable' || analysis.lstmScore === null || typeof analysis.lstmScore !== 'number') {
     cardLstm.className = 'model-row';
     lstmScoreVal.textContent = 'N/A';
+    lstmScoreVal.title = 'attack probability';
     lstmStatus.textContent = 'Unavailable';
-    lstmStatus.className = 'status-badge nominal';
+    lstmStatus.className = 'status-badge';
     lstmScoreVal.style.color = 'var(--text-muted, #94a3b8)';
   } else {
     const lstmPct = (analysis.lstmScore * 100).toFixed(1);
     lstmScoreVal.textContent = `${lstmPct}%`;
-    const isLstmVote = analysis.lstmVote === 1;
-    if (isLstmVote) {
+    lstmScoreVal.title = 'attack probability';
+    if (analysis.lstmVote === 1) {
       cardLstm.className = 'model-row threat-hit';
-      lstmStatus.textContent = 'Critical Threat';
+      lstmStatus.textContent = 'Attack';
       lstmStatus.className = 'status-badge threat';
       lstmScoreVal.style.color = '#ef4444';
     } else {
       cardLstm.className = 'model-row normal-hit';
-      lstmStatus.textContent = 'Low Risk';
+      lstmStatus.textContent = 'Normal';
       lstmStatus.className = 'status-badge nominal';
       lstmScoreVal.style.color = '#10b981';
     }
   }
 
   // Model 4: Consensus Arbiter & Playbook
-  const modeTag = analysis.votingMode ? ` [${analysis.votingMode}]` : '';
+  const activeVotingMode = analysis.votingMode || '2-of-2';
+  const modeTag = ` [${activeVotingMode}]`;
   if (isThreat) {
     cardConsensus.className = 'consensus-row threat-hit';
     consensusVerdict.textContent = `BREAKER TRIP ALERT${modeTag}`;
@@ -544,28 +603,34 @@ function handleTelemetryPacket(packet) {
     playbookCode.style.color = '#10b981';
   }
 
+  // Authentic Origin, Protocol, Substation strings
+  const nodeText = formatOriginNode(p.node_id);
+  const protoText = formatProtocol(p.protocol);
+  const subText = formatSubstation(p.substation);
+  const devText = formatDeviceType(p.device_type);
+
   // 5. Threat Alert Strip (Requirement 2g: UI never decides "attack" itself)
   if (isThreat) {
     threatBanner.className = 'alert-strip alert-state';
     bannerHeading.textContent = `CRITICAL CYBER-PHYSICAL INTRUSION: ${p.simulated_class.replace(/_/g, ' ').toUpperCase()}`;
-    bannerSub.textContent = `Industrial Safety Interlock Engaged • Origin: ${p.node_id} (${p.substation}) • Protocol: ${p.protocol}`;
+    bannerSub.textContent = `Industrial Safety Interlock Engaged • Origin: ${nodeText} (${subText}) • Protocol: ${protoText}`;
     bannerActionTag.textContent = `PLAYBOOK: ${analysis.playbookAction}`;
     playTone(900, 0.25, 0.15);
   } else {
     // If attack was injected and missed by the engine, honestly display Normal in the banner
     threatBanner.className = 'alert-strip normal-state';
     bannerHeading.textContent = 'STATUS: NORMAL OPERATION - SCADA INTERLOCK SECURE';
-    bannerSub.textContent = `Turbine frequency and voltage stabilized nominal • Origin: ${p.node_id}`;
+    bannerSub.textContent = `Turbine frequency and voltage stabilized nominal • Origin: ${nodeText}`;
     bannerActionTag.textContent = 'PLAYBOOK: PASSIVE_MONITORING / FORWARD';
     playTone(520, 0.06, 0.03);
   }
 
   // 6. Active Packet Inspector Ribbon
   activePidBadge.textContent = `PKT #${String(p.packet_id).padStart(4, '0')}`;
-  inspNode.textContent = p.node_id;
-  inspSubstation.textContent = p.substation;
-  inspProto.textContent = p.protocol;
-  inspType.textContent = p.simulated_class;
+  inspNode.textContent = nodeText;
+  inspSubstation.textContent = subText;
+  inspProto.textContent = protoText;
+  inspType.textContent = (p.simulated_class && typeof p.simulated_class === 'string') ? p.simulated_class : 'N/A';
   inspType.style.color = isThreat ? 'var(--status-alert)' : 'var(--status-safe)';
 
   // 7. Security Audit Log (Requirement 2g: show injected ground truth)
@@ -574,9 +639,9 @@ function handleTelemetryPacket(packet) {
   const logClass = isThreat ? 'alert-line' : 'normal-line';
   const badgeText = isThreat ? 'CRITICAL INTRUSION DETECTED' : 'FORWARDED - SECURE';
   const badgeHtml = `<span class="log-badge">${badgeText}</span>`;
-  const isoDisplay = analysis.isoAnomaly === 1 ? 'Outlier Anomaly' : 'Nominal';
-  const lstmLog = (analysis.lstm_status === 'unavailable' || analysis.lstmScore === null) ? 'LSTM: N/A' : `LSTM: ${(analysis.lstmScore * 100).toFixed(1)}%`;
-  const logMsg = `[${p.timestamp}] [PKT #${String(p.packet_id).padStart(4, '0')}] ${badgeHtml} <strong>${injectedLabel}</strong> • Node: ${p.node_id} • RF: ${rfPct}% • Iso: ${isoDisplay} • ${lstmLog} • Action: ${analysis.playbookAction}`;
+  const isoDisplay = analysis.isoVote === 1 ? 'Outlier' : 'Nominal';
+  const lstmLog = (analysis.lstm_status === 'unavailable' || analysis.lstmScore === null) ? 'LSTM: Unavailable' : `LSTM: ${(analysis.lstmScore * 100).toFixed(1)}% (${analysis.lstmVote === 1 ? 'Attack' : 'Normal'})`;
+  const logMsg = `[${p.timestamp}] [PKT #${String(p.packet_id).padStart(4, '0')}] ${badgeHtml} <strong>${injectedLabel}</strong> • Node: ${nodeText} • RF: ${rfPct}% (${analysis.rfVote === 1 ? 'Attack' : 'Normal'}) • Iso: ${isoDisplay} • ${lstmLog} • Action: ${analysis.playbookAction}`;
   addLogLine(logMsg, logClass);
 }
 
@@ -601,10 +666,7 @@ function connectEventStream() {
   eventSource = new EventSource(API_BASE + '/api/stream');
 
   eventSource.onopen = () => {
-    if (streamStatus && !isStreamPaused) {
-      const s = rateSlider ? parseFloat(rateSlider.value).toFixed(1) : '5.0';
-      streamStatus.innerHTML = `<span class="status-dot"></span> Live Stream (${s}s) [SIMULATED]`;
-    }
+    updateStreamStatusDisplay();
   };
 
   eventSource.onmessage = (event) => {
@@ -615,10 +677,12 @@ function connectEventStream() {
         if (data.selectedAttack) {
           setActiveInjectionMode(data.selectedAttack);
         }
-        if (data.streamIntervalMs && rateSlider) {
-          const s = (data.streamIntervalMs / 1000).toFixed(1);
-          rateSlider.value = s;
-          if (sliderValText) sliderValText.textContent = `${s}s`;
+        if (data.streamIntervalMs) {
+          const s = data.streamIntervalMs / 1000.0;
+          currentStreamInterval = s;
+          if (rateSlider) rateSlider.value = s.toFixed(1);
+          if (sliderValText) sliderValText.textContent = `${s.toFixed(1)}s`;
+          updateStreamStatusDisplay(s);
         }
       } else if (data.type === 'engine_status' && data.engine_offline) {
         // Requirement 2b: Detection engine offline status
@@ -645,9 +709,35 @@ function connectEventStream() {
   };
 }
 
+// Fetch Initial Stream Config from Server (Requirement: real current interval)
+async function fetchInitialConfig() {
+  try {
+    const res = await fetch(API_BASE + '/api/config');
+    if (res.ok) {
+      const cfg = await res.json();
+      const sec = typeof cfg.interval === 'number' ? cfg.interval : (typeof cfg.streamIntervalMs === 'number' ? cfg.streamIntervalMs / 1000.0 : null);
+      if (sec !== null) {
+        currentStreamInterval = sec;
+        if (rateSlider) rateSlider.value = sec.toFixed(1);
+        if (sliderValText) sliderValText.textContent = `${sec.toFixed(1)}s`;
+        updateStreamStatusDisplay(sec);
+      }
+      if (typeof cfg.isStreaming === 'boolean') {
+        isStreamPaused = !cfg.isStreaming;
+        if (streamBtnText) streamBtnText.textContent = isStreamPaused ? 'Resume' : 'Pause';
+        updateStreamStatusDisplay();
+      }
+      if (cfg.selectedAttack) {
+        setActiveInjectionMode(cfg.selectedAttack);
+      }
+    }
+  } catch (err) {}
+}
+
 // Start Stream on Load
 function initDashboard() {
   resizeCanvas();
+  fetchInitialConfig();
   connectEventStream();
 }
 
