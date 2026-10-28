@@ -544,20 +544,20 @@ function handleTelemetryPacket(packet) {
   }
 
   // Model 2: Isolation Forest
+  const isoPct = typeof analysis.isoScore === 'number' ? (analysis.isoScore * 100).toFixed(1) : null;
+  isoScoreVal.textContent = isoPct !== null ? `${isoPct}%` : (analysis.isoVote === 1 ? 'Outlier' : 'Nominal');
+  isoScoreVal.title = 'unsupervised anomaly score';
   if (analysis.isoVote === 1) {
     cardIso.className = 'model-row threat-hit';
     isoStatus.textContent = 'Outlier';
     isoStatus.className = 'status-badge threat';
-    isoScoreVal.textContent = 'Outlier';
     isoScoreVal.style.color = '#ef4444';
   } else {
     cardIso.className = 'model-row normal-hit';
     isoStatus.textContent = 'Nominal';
     isoStatus.className = 'status-badge nominal';
-    isoScoreVal.textContent = 'Nominal';
     isoScoreVal.style.color = '#10b981';
   }
-  isoScoreVal.title = 'anomaly outlier flag';
 
   // Model 3: Deep LSTM
   if (analysis.lstm_status === 'unavailable' || analysis.lstmScore === null || typeof analysis.lstmScore !== 'number') {
@@ -592,8 +592,8 @@ function handleTelemetryPacket(packet) {
     consensusVerdict.textContent = `BREAKER TRIP ALERT${modeTag}`;
     consensusVerdict.className = 'consensus-val highlight-danger mono';
     consensusVerdict.style.color = '#ef4444';
-    playbookCode.textContent = `Action: ${analysis.playbookAction}`;
-    playbookCode.style.color = '#ef4444';
+    const reasonText = analysis.consensusReason ? ` (${analysis.consensusReason})` : '';
+    playbookCode.innerHTML = `<span style="color:#ef4444; font-weight:600;">Action: ${analysis.playbookAction}</span><br><span style="font-size:0.68rem; color:#94a3b8;">${analysis.playbookSummary || analysis.consensusReason || ''}</span>`;
   } else {
     cardConsensus.className = 'consensus-row normal-hit';
     consensusVerdict.textContent = `Secure (Nominal Grid)${modeTag}`;
@@ -613,7 +613,8 @@ function handleTelemetryPacket(packet) {
   if (isThreat) {
     threatBanner.className = 'alert-strip alert-state';
     bannerHeading.textContent = `CRITICAL CYBER-PHYSICAL INTRUSION: ${p.simulated_class.replace(/_/g, ' ').toUpperCase()}`;
-    bannerSub.textContent = `Industrial Safety Interlock Engaged • Origin: ${nodeText} (${subText}) • Protocol: ${protoText}`;
+    const reasonPrefix = analysis.consensusReason ? `${analysis.consensusReason} • ` : '';
+    bannerSub.textContent = `${reasonPrefix}Origin: ${nodeText} (${subText}) • Protocol: ${protoText}`;
     bannerActionTag.textContent = `PLAYBOOK: ${analysis.playbookAction}`;
     playTone(900, 0.25, 0.15);
   } else {
@@ -639,9 +640,10 @@ function handleTelemetryPacket(packet) {
   const logClass = isThreat ? 'alert-line' : 'normal-line';
   const badgeText = isThreat ? 'CRITICAL INTRUSION DETECTED' : 'FORWARDED - SECURE';
   const badgeHtml = `<span class="log-badge">${badgeText}</span>`;
-  const isoDisplay = analysis.isoVote === 1 ? 'Outlier' : 'Nominal';
+  const isoLabel = analysis.isoVote === 1 ? 'Outlier' : 'Nominal';
+  const isoLog = isoPct !== null ? `Iso: ${isoPct}% (${isoLabel})` : `Iso: ${isoLabel}`;
   const lstmLog = (analysis.lstm_status === 'unavailable' || analysis.lstmScore === null) ? 'LSTM: Unavailable' : `LSTM: ${(analysis.lstmScore * 100).toFixed(1)}% (${analysis.lstmVote === 1 ? 'Attack' : 'Normal'})`;
-  const logMsg = `[${p.timestamp}] [PKT #${String(p.packet_id).padStart(4, '0')}] ${badgeHtml} <strong>${injectedLabel}</strong> • Node: ${nodeText} • RF: ${rfPct}% (${analysis.rfVote === 1 ? 'Attack' : 'Normal'}) • Iso: ${isoDisplay} • ${lstmLog} • Action: ${analysis.playbookAction}`;
+  const logMsg = `[${p.timestamp}] [PKT #${String(p.packet_id).padStart(4, '0')}] ${badgeHtml} <strong>${injectedLabel}</strong> • Node: ${nodeText} • RF: ${rfPct}% (${analysis.rfVote === 1 ? 'Attack' : 'Normal'}) • ${isoLog} • ${lstmLog} • Action: ${analysis.playbookAction}`;
   addLogLine(logMsg, logClass);
 }
 

@@ -99,6 +99,7 @@ def run_stream():
 
             # Handle Attack Selection Changes or Episode Continuation
             if selected_attack != current_episode_attack or episode_remaining_packets <= 0:
+                is_operator_inject = (selected_attack != current_episode_attack and selected_attack != 'Normal')
                 current_episode_attack = selected_attack
                 if current_episode_attack == 'Normal':
                     episode_total_length = 50
@@ -106,12 +107,16 @@ def run_stream():
                     episode_intensity = 0.0
                     episode_ramp_length = 0
                 else:
-                    # Contiguous attack episode: 5 to 60 packets with Beta(2, 2) intensity
-                    episode_total_length = rng.randint(15, 45)
+                    # Contiguous attack episode
+                    episode_total_length = rng.randint(20, 50)
                     episode_remaining_packets = episode_total_length
-                    # Draw intensity from Beta(2, 2) distribution -> range [0.15, 0.85]
-                    episode_intensity = rng.betavariate(2.0, 2.0)
-                    episode_ramp_length = max(2, int(episode_total_length * 0.25))
+                    # If manually selected by operator from Inject tab, immediately apply detectable intensity
+                    if is_operator_inject:
+                        episode_intensity = rng.uniform(0.75, 1.0)
+                        episode_ramp_length = 1
+                    else:
+                        episode_intensity = rng.betavariate(2.0, 2.0)
+                        episode_ramp_length = max(2, int(episode_total_length * 0.25))
 
             # Calculate onset ramp factor
             step_in_episode = episode_total_length - episode_remaining_packets

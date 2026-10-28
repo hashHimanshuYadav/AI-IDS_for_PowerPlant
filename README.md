@@ -251,7 +251,7 @@ python3 stream_generator.py
 python3 detect.py
 ```
 
-Open your browser at **`http://localhost:3000`** to monitor real-time telemetry, inject attacks, or adjust packet rates.
+Open your browser at **`http://localhost:5050`** to monitor real-time telemetry, inject attacks, or adjust packet rates.
 
 ---
 

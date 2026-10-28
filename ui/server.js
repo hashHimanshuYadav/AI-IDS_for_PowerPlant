@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
+const { spawn } = require('child_process');
 
 const PORT = process.env.PORT || 5050;
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -9,6 +10,181 @@ const LIVE_STREAM_FILE = path.join(ROOT_DIR, 'live_stream.json');
 const DETECTION_FILE = path.join(ROOT_DIR, 'live_detection.json');
 const CONFIG_FILE = path.join(ROOT_DIR, 'stream_config.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
+
+// --- Incident Response Playbooks (Specific ICS Mitigations) ---
+const PLAYBOOKS = {
+  'False_Data_Injection': {
+    action: 'ISOLATE_SENSOR_BUS',
+    title: 'Sensor Validation Failure (False Data Injection)',
+    summary: 'Trip analog telemetry cross-check and isolate compromised RTU sensor feed.',
+    steps: [
+      'Trip analog telemetry cross-check interlock',
+      'Compare Kalman state estimation residuals across redundant CT/PT sensors',
+      'Isolate compromised RTU analog input bus to prevent turbine governor corruption',
+      'Switch turbine control to autonomous dead-band governor regulation'
+    ]
+  },
+  'Command_Injection': {
+    action: 'REVOKE_SCADA_PRIVILEGES',
+    title: 'Unauthorized SCADA Control Command',
+    summary: 'Trip remote command execution interlock and force session re-authentication.',
+    steps: [
+      'Trip remote command execution interlock on Purdue Level 1 RTU/PLC',
+      'Revoke active SCADA operator credentials and force session re-authentication',
+      'Lock actuator setpoints to safe nominal fallback baseline',
+      'Inspect Modbus/DNP3 function codes for unauthorized control writes'
+    ]
+  },
+  'DoS_Attack': {
+    action: 'RATE_LIMIT_EGRESS_PORT',
+    title: 'Industrial Network Saturation (DoS)',
+    summary: 'Engage hardware rate-limiting on Substation switch and prioritize GOOSE/DNP3.',
+    steps: [
+      'Engage hardware rate-limiting on Substation switch trunk port',
+      'Prioritize GOOSE / DNP3 broadcast heartbeat queues over non-critical telemetry',
+      'Isolate compromised network segment to Purdue Level 2 DMZ',
+      'Verify protective relays maintain autonomous fail-safe operation'
+    ]
+  },
+  'Replay_Attack': {
+    action: 'RESET_CRYPTOGRAPHIC_NONCE',
+    title: 'Stale Sensor Replay Sequence Detected',
+    summary: 'Invalidate DNP3/IEC-61850 session nonce and enforce strict time-synchronization.',
+    steps: [
+      'Invalidate current DNP3/IEC-61850 session nonce and sequence counter',
+      'Enforce strict time-synchronization (IEEE 1588 PTP) tolerance window',
+      'Flush telemetry replay cache on SCADA front-end processor',
+      'Trigger out-of-band integrity heartbeat poll to RTU'
+    ]
+  },
+  'Insider_Threat': {
+    action: 'ENGAGE_DUAL_AUTHORIZATION',
+    title: 'Privilege Escalation / Rogue Operator Action',
+    summary: 'Lock anomalous operator session and require two-person rule for breaker trips.',
+    steps: [
+      'Lock out anomalous operator workstation session',
+      'Require two-person integrity (2-person rule) for critical breaker trips',
+      'Export audit log snapshot to SIEM / security operations center',
+      'Halt remote setpoint modifications until supervisor clearance'
+    ]
+  },
+  'Spoofing_Attack': {
+    action: 'DROP_UNVERIFIED_FRAMES',
+    title: 'Device Identity / MAC Spoofing Detected',
+    summary: 'Enable 802.1X port security and drop unverified industrial frames.',
+    steps: [
+      'Enable 802.1X port security and block unverified MAC/IP bindings',
+      'Drop spoofed industrial frames at Substation managed switch',
+      'Verify digital certificates and device trust levels for all IED nodes',
+      'Alert network operations team to inspect physical tap locations'
+    ]
+  },
+  'Malware': {
+    action: 'QUARANTINE_PLC_FIRMWARE',
+    title: 'Firmware / Memory Integrity Anomaly (Malware)',
+    summary: 'Sever network connection to affected PLC and verify firmware cryptographic hash.',
+    steps: [
+      'Sever network connection to affected PLC/RTU controller immediately',
+      'Verify firmware cryptographic hash against golden engineering baseline',
+      'Transfer turbine protection loop to redundant standby safety PLC',
+      'Initiate offline forensic memory dump and clean restore'
+    ]
+  },
+  'Reconnaissance': {
+    action: 'BLOCK_PROBING_HOST',
+    title: 'Substation Port Scanning & Mapping Activity',
+    summary: 'Add probing IP to perimeter drop rules and suppress protocol discovery.',
+    steps: [
+      'Add probing source IP/MAC to firewall perimeter drop rule',
+      'Suppress ICMP and industrial protocol discovery responses',
+      'Alert SOC of pre-attack reconnaissance phase',
+      'Audit access logs across all Purdue Level 2 and Level 3 gateways'
+    ]
+  },
+  'Normal': {
+    action: 'PASSIVE_MONITORING',
+    title: 'Nominal SCADA Operation',
+    summary: 'Maintain passive telemetry monitoring and forward packets to historian.',
+    steps: [
+      'Telemetry within nominal statistical tolerance',
+      'Forward packets to SCADA historian database',
+      'Maintain active baseline drift profiling'
+    ]
+  }
+};
+
+// --- Background Worker Management ---
+let generatorProcess = null;
+let detectorProcess = null;
+
+function getPythonPath() {
+  const venvPython = path.join(ROOT_DIR, 'venv', 'bin', 'python');
+  if (fs.existsSync(venvPython)) {
+    return venvPython;
+  }
+  return 'python3';
+}
+
+function startBackgroundProcesses() {
+  const pyCmd = getPythonPath();
+  console.log(`[+] Auto-supervisor using Python: ${pyCmd}`);
+
+  // Launch stream_generator.py if not currently writing
+  let streamAgeMs = Infinity;
+  if (fs.existsSync(LIVE_STREAM_FILE)) {
+    try {
+      streamAgeMs = Date.now() - fs.statSync(LIVE_STREAM_FILE).mtimeMs;
+    } catch (e) {}
+  }
+
+  if (streamAgeMs > 4000) {
+    console.log('[+] Starting live telemetry stream generator (stream_generator.py)...');
+    generatorProcess = spawn(pyCmd, ['stream_generator.py'], {
+      cwd: ROOT_DIR,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    generatorProcess.stdout.on('data', () => {});
+    generatorProcess.stderr.on('data', (d) => {
+      console.error(`[generator] ${d.toString().trim()}`);
+    });
+  } else {
+    console.log('[*] Live stream generator already active.');
+  }
+
+  // Launch detect.py if not currently writing
+  let detAgeMs = Infinity;
+  if (fs.existsSync(DETECTION_FILE)) {
+    try {
+      detAgeMs = Date.now() - fs.statSync(DETECTION_FILE).mtimeMs;
+    } catch (e) {}
+  }
+
+  if (detAgeMs > 4000) {
+    console.log('[+] Starting AI detection engine (detect.py)...');
+    detectorProcess = spawn(pyCmd, ['detect.py'], {
+      cwd: ROOT_DIR,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    detectorProcess.stdout.on('data', () => {});
+    detectorProcess.stderr.on('data', (d) => {
+      console.error(`[detector] ${d.toString().trim()}`);
+    });
+  } else {
+    console.log('[*] AI detection engine already active.');
+  }
+
+  // Gracefully terminate child processes
+  const cleanup = () => {
+    if (generatorProcess) {
+      try { generatorProcess.kill(); } catch (e) {}
+    }
+    if (detectorProcess) {
+      try { detectorProcess.kill(); } catch (e) {}
+    }
+  };
+  process.on('SIGINT', () => { cleanup(); process.exit(); });
+  process.on('SIGTERM', () => { cleanup(); process.exit(); });
+}
 
 // --- Global State ---
 let clients = [];
@@ -87,6 +263,10 @@ function checkDetectionOutput() {
     }
 
     // Assemble relay payload for UI
+    const attackType = detectionData.simulated_class || 'Normal';
+    const isAlert = Boolean(detectionData.alert);
+    const pb = PLAYBOOKS[attackType] || (isAlert ? PLAYBOOKS['Command_Injection'] : PLAYBOOKS['Normal']);
+
     const payload = {
       packet_id: detectionData.packet_id,
       timestamp: detectionData.timestamp || new Date().toISOString(),
@@ -100,6 +280,7 @@ function checkDetectionOutput() {
       analysis: {
         rfScore: typeof detectionData.rf_score === 'number' ? parseFloat(detectionData.rf_score.toFixed(4)) : null,
         rfVote: typeof detectionData.rf_vote === 'number' ? detectionData.rf_vote : 0,
+        isoScore: typeof detectionData.iso_score === 'number' ? parseFloat(detectionData.iso_score.toFixed(4)) : null,
         isoAnomaly: typeof detectionData.iso_anomaly === 'number' ? detectionData.iso_anomaly : 0,
         isoVote: typeof detectionData.iso_vote === 'number' ? detectionData.iso_vote : 0,
         lstmScore: typeof detectionData.lstm_score === 'number' ? parseFloat(detectionData.lstm_score.toFixed(4)) : null,
@@ -107,9 +288,13 @@ function checkDetectionOutput() {
         lstm_status: detectionData.lstm_status || (detectionData.lstm_score === null ? 'unavailable' : 'active'),
         consensusVotes: typeof detectionData.consensus_votes === 'number' ? detectionData.consensus_votes : 0,
         votingMode: detectionData.voting_mode || '2-of-2',
-        isConsensusThreat: Boolean(detectionData.alert),
-        playbookAction: detectionData.alert ? 'SAFETY_INTERLOCK_ENGAGED' : 'PASSIVE_MONITORING',
-        gridStatusMessage: detectionData.alert ? 'TRIP BREAKER ENGAGED' : 'NOMINAL GRID',
+        consensusReason: detectionData.consensus_reason || (isAlert ? 'Multi-Model Consensus Alert' : 'Nominal Grid Telemetry'),
+        isConsensusThreat: isAlert,
+        playbookAction: isAlert ? pb.action : 'PASSIVE_MONITORING',
+        playbookTitle: isAlert ? pb.title : 'Nominal SCADA Operation',
+        playbookSummary: isAlert ? pb.summary : 'Telemetry within nominal statistical tolerance',
+        playbookSteps: isAlert ? pb.steps : PLAYBOOKS['Normal'].steps,
+        gridStatusMessage: isAlert ? 'TRIP BREAKER ENGAGED' : 'NOMINAL GRID',
         thdPercent: 'N/A', // Real datasets have no THD; honest report
         metrics: {
           voltageDeviation: detectionData.physical ? parseFloat(detectionData.physical.voltage_deviation_percent || 0) : 0.0,
@@ -315,4 +500,7 @@ server.listen(PORT, () => {
   console.log(`[+] Real-Time SSE Relay:     http://localhost:${PORT}/api/stream`);
   console.log(`[+] Mode:                    Relaying detect.py outputs only`);
   console.log('================================================================\n');
+
+  // Automatically ensure live telemetry generator and AI engine are active
+  startBackgroundProcesses();
 });

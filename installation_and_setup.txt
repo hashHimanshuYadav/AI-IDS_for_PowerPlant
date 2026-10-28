@@ -58,7 +58,7 @@ windows (or background them):
 
 TERMINAL 1: WEB DASHBOARD RELAY SERVER
    $ npm start
-   (Launches the Node.js dashboard server at http://localhost:3000)
+   (Launches the Node.js dashboard server at http://localhost:5050)
 
 TERMINAL 2: LIVE TELEMETRY SIMULATION STREAM
    $ python3 stream_generator.py
@@ -69,7 +69,7 @@ TERMINAL 3: AI INTRUSION DETECTION ENGINE
    (Actively scores packets using Random Forest, Isolation Forest, and LSTM,
     applying thresholds from thresholds.json and writing live_detection.json)
 
-Access the UI at: http://localhost:3000
+Access the UI at: http://localhost:5050
 
 ================================================================================
 4. ARCHITECTURE & DATA CONTRACTS
