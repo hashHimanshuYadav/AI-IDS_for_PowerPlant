@@ -180,7 +180,7 @@ The dashboard (`ui/`) provides a dark-mode SCADA operations interface:
 ## 📁 Repository Structure
 
 ```
-AI-IDS_for_PowerPlant-2/
+AI-IDS_for_PowerPlant/
 ├── .env.example                                      # Environment template
 ├── .gitignore                                        # Excludes virtual environments, models, logs
 ├── AI-Driven_Intrusion_Detection_for_Energy_and_Power_Plant_ICS.ipynb # Reference training notebook
